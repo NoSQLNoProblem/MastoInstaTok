@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "target": "ES2023",
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "outDir": "dist",
+    },
+    "include": ["src/**/*"],
+}
