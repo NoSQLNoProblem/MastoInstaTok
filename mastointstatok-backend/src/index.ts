@@ -1,12 +1,17 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import inboxRoutes from './routes/InboxRoutes';
 
 const app = express();
-const port = 3000;
 
-app.get('/', (req: Request, res: Response) => {
-  res.send('Initial test endpoint');
+app.use(express.json());
+app.use(inboxRoutes);
+
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error(err);
+  res.status(500).json({ error: err.message });
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
