@@ -79,12 +79,17 @@ jobs:
         run: npm run build
         working-directory: mastoinstatok-frontend
 
-      - name: Package application
+      - name: Copy necessary files for deployment
         working-directory: mastoinstatok-frontend
         run: |
           mkdir -p front-end-build
-          rsync -av --exclude front-end-build/ ./ front-end-build/
-          zip -r front-end-build.zip front-end-build
+          cp -r .next public package.json next.config.js front-end-build/
+
+      - name: Copy necessary files for deployment
+        working-directory: mastoinstatok-frontend
+        run: |
+          mkdir -p front-end-build
+          cp -r .next public package.json next.config.js front-end-build/
           
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -135,6 +140,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
           cat <<EOF > front-end-build/start-next.sh
           #!/bin/bash
+          cd \$(dirname "\$0")
+          npm install --omit=dev
           npm run start
           EOF'
 
