@@ -202,6 +202,7 @@ jobs:
       - build-api
       - deploy-frontend
       - terraform
+      - setup-databases
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -260,6 +261,54 @@ jobs:
             cd dist &&
             pm2 start index.js --name mastoinstatok-api
           '
+  setup-databases:
+      name: Setup MongoDB and Redis
+      permissions:
+        id-token: write
+        contents: read
+      needs:
+        - terraform
+      runs-on: ubuntu-latest
+      steps:
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v2
+          with:
+            role-to-assume: arn:aws:iam::804180393465:role/github-role
+            aws-region: ${{ env.AWS_REGION }}
+
+        - name: Get secrets from AWS Key Store
+          uses: aws-actions/aws-secretsmanager-get-secrets@v2
+          with:
+            secret-ids: |
+              EC2_PRIVATE_KEY, privatekey
+
+        - name: Setup private key
+          run: |
+            echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
+            chmod 0500 privatekey.pem
+
+        - name: Install MongoDB and Redis on EC2
+          run: |
+            EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+
+            ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" 'bash -s' <<'EOF'
+            # Install Redis
+            sudo apt install redis-server -y
+            sudo systemctl enable redis-server
+            sudo systemctl start redis-server
+
+            # Install MongoDB
+            curl -fsSL https://pgp.mongodb.com/server-6.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor
+            echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+            sudo apt update
+            sudo apt install -y mongodb-org
+            sudo systemctl enable mongod
+            sudo systemctl start mongod
+
+            # Confirm both services are running
+            systemctl status redis-server
+            systemctl status mongod
+            EOF
 
   issue-certificates:
     needs:
