@@ -153,6 +153,7 @@ jobs:
           EC2_HOST=${{ needs.terraform.outputs.ec2host }}
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
             cd front-end-build/ && 
+            npm install next --save --force &&
             # Stop and delete existing pm2 process if it exists
             if pm2 list | grep -q "mastoinstatok-front-end"; then
               pm2 delete mastoinstatok-front-end;
