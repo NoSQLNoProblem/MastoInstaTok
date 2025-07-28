@@ -231,7 +231,7 @@ jobs:
 
       - name: Set env variables
         run: |
-              EC2_HOST=${{ needs.terraform.outputs.apiec2host }}
+              EC2_HOST=${{ needs.terraform.outputs.ec2host }}
               ssh -o StrictHostKeyChecking=no -i privatekey.pem ubuntu@$EC2_HOST 'bash -s' <<'EOF'
               sudo tee /etc/environment > /dev/null <<'ENV_VAR'
               GOOGLE_CLIENT_ID=${{ env.GOOGLE_CLIENT_ID }}
