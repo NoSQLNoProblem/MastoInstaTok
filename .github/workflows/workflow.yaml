@@ -250,8 +250,6 @@ jobs:
 
             cd api-build/ &&
 
-            mv ../.env dist/ &&
-
             npm install &&
             
             # Stop and delete existing pm2 process if it exists
