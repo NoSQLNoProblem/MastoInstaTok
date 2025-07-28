@@ -33,10 +33,6 @@ resource "aws_default_subnet" "subnet_az2" {
   availability_zone = data.aws_availability_zones.available_zones.names[1]
 }
 
-output "postgres_sg_id" {
-  value = aws_security_group.allow_postgres.id
-}
-
 
 resource "aws_security_group" "ec2_security_group" {
   name_prefix = "mastoinstatok_api_sg"
