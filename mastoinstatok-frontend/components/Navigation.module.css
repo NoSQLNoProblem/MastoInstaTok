@@ -1,0 +1,100 @@
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-bottom: 1px solid #ddd;
+  z-index: 1000;
+  height: 60px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  text-decoration: none;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.navLink {
+  color: #666;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.navLink:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.navLink.active {
+  background: #4285f4;
+  color: white;
+}
+
+.logoutButton {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.logoutButton:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 10px;
+  }
+
+  .navLinks {
+    gap: 10px;
+  }
+
+  .navLink,
+  .logoutButton {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navLinks {
+    gap: 5px;
+  }
+
+  .navLink,
+  .logoutButton {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
