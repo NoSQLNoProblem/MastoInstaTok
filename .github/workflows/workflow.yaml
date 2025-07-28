@@ -136,9 +136,9 @@ jobs:
           '
 
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
-          cat <<EOF > front-end-build/start-next.sh
+          cat <<EOF > start-next.sh
           #!/bin/bash
-          npm run start
+          cd front-end-build/ && npm run start
           EOF'
 
       - name: Make script executable
