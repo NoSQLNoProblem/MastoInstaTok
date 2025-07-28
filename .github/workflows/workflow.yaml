@@ -91,7 +91,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: front-end-build
-          path: app/front-end-build.zip
+          path: mastoinstatok-frontend/front-end-build.zip
 
   deploy-frontend:
     name: Deploy front-end to EC2
