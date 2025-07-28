@@ -83,7 +83,7 @@ jobs:
         working-directory: mastoinstatok-frontend
         run: |
           mkdir -p front-end-build
-          cp -r * front-end-build/
+          rsync -av --exclude front-end-build/ ./ front-end-build/
           zip -r front-end-build.zip front-end-build
           
       - name: Upload build artifact
