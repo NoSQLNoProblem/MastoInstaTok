@@ -135,19 +135,18 @@ jobs:
             npm install --force
           '
 
-          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
-          cat <<EOF > start-serve.sh
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
+          cat <<EOF > front-end-build/start-next.sh
           #!/bin/bash
-          npx serve -s .next
+          npm run build
+          npm run start
           EOF'
 
-      - name: Make script executable 
+      - name: Make script executable
         run: |
           EC2_HOST=${{ needs.terraform.outputs.ec2host }}
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
-            mv start-serve.sh front-end-build/ && 
-            cd front-end-build/ &&
-            chmod +x start-serve.sh
+            chmod +x front-end-build/start-next.sh
           '
 
       - name: Run with pm2
