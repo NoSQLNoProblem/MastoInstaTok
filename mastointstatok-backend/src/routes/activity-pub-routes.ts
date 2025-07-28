@@ -22,7 +22,7 @@ const routes = {
 export const apex = ActivitypubExpress({
   name: 'Apex Example',
   version: '1.0.0',
-  domain: 'localhost:3000',
+  domain: 'localhost:5000',
   actorParam: 'actor',
   objectParam: 'id',
   activityParam: 'id',

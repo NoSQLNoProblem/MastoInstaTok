@@ -137,6 +137,7 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
           cat <<EOF > front-end-build/start-next.sh
+          #!/bin/bash
           npm run start
           EOF'
 
