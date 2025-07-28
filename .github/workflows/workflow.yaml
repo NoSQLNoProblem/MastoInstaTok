@@ -76,7 +76,7 @@ jobs:
         working-directory: mastoinstatok-frontend
       
       - name: Build application
-        run: npm run build && npm install --force
+        run: npm run build
         working-directory: mastoinstatok-frontend
 
       - name: Package application
