@@ -76,7 +76,7 @@ jobs:
         working-directory: mastoinstatok-frontend
       
       - name: Build application
-        run: npm run build
+        run: npm run build && npm install --force
         working-directory: mastoinstatok-frontend
 
       - name: Package application
@@ -84,7 +84,7 @@ jobs:
         run: |
           mkdir -p front-end-build
           cp -r .next front-end-build/
-          cp node_modules front-end-build/
+          cp -r node_modules front-end-build/
           cp package.json front-end-build/
           zip -r front-end-build.zip front-end-build
           
