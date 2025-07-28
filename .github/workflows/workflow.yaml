@@ -193,6 +193,7 @@ jobs:
       contents: read
     needs: 
       - build-api
+      - deploy-frontend
       - terraform
     runs-on: ubuntu-latest
     steps:
