@@ -84,6 +84,7 @@ jobs:
         run: |
           mkdir -p front-end-build
           cp -r .next front-end-build/
+          cp node_modules front-end-build/
           cp package.json front-end-build/
           zip -r front-end-build.zip front-end-build
           
@@ -131,9 +132,13 @@ jobs:
           scp -o StrictHostKeyChecking=no -i privatekey.pem ./front-end-build.zip "ubuntu@$EC2_HOST:front-end-build.zip"
           
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
-            unzip -o front-end-build.zip && cd front-end-build/ &&
-            npm install --force
+            unzip -o front-end-build.zip
           '
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
+          cat <<EOF > front-end-build/start-next.sh
+          #!/bin/bash
+          npm run start
+          EOF'
 
       - name: Make script executable
         run: |
