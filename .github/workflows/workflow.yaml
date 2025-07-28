@@ -83,9 +83,7 @@ jobs:
         working-directory: mastoinstatok-frontend
         run: |
           mkdir -p front-end-build
-          cp -r .next front-end-build/
-          cp -r node_modules front-end-build/
-          cp package.json front-end-build/
+          cp -r * front-end-build/
           zip -r front-end-build.zip front-end-build
           
       - name: Upload build artifact
@@ -137,7 +135,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
           cat <<EOF > front-end-build/start-next.sh
           #!/bin/bash
-          npm run build && npm run start
+          npm run start
           EOF'
 
       - name: Make script executable
@@ -152,7 +150,6 @@ jobs:
           EC2_HOST=${{ needs.terraform.outputs.ec2host }}
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
             cd front-end-build/ && 
-            npm install next --save --force &&
             # Stop and delete existing pm2 process if it exists
             if pm2 list | grep -q "mastoinstatok-front-end"; then
               pm2 delete mastoinstatok-front-end;
