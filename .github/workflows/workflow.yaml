@@ -83,13 +83,7 @@ jobs:
         working-directory: mastoinstatok-frontend
         run: |
           mkdir -p front-end-build
-          cp -r .next public package.json next.config.js front-end-build/
-
-      - name: Copy necessary files for deployment
-        working-directory: mastoinstatok-frontend
-        run: |
-          mkdir -p front-end-build
-          cp -r .next public package.json next.config.js front-end-build/
+          cp -r .next public package.json next.config.mjs front-end-build/
           
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
