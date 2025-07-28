@@ -138,7 +138,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
           cat <<EOF > start-serve.sh
           #!/bin/bash
-          npx serve -s dist
+          npx serve -s .next
           EOF'
 
       - name: Make script executable 
