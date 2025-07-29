@@ -80,7 +80,7 @@ jobs:
         working-directory: mastoinstatok-frontend
 
       - name: Package application
-        working-directory: app
+        working-directory: mastoinstatok-frontend
         run: |
           mkdir -p front-end-build
           cp -r .next front-end-build/
