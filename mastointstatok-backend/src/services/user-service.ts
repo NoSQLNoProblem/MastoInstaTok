@@ -16,7 +16,7 @@ export async function CreateUser(profile : Profile, baseUrl:string ) {
   const userToInsert = {
     googleId: profile.id,
     email: profile.emails?.[0]?.value,
-    displayName: profile.displayName,
+    displayName: username,
     actorId: actorId,
     followers: []
   };
@@ -32,6 +32,7 @@ export async function FindUser(profile : Profile)
 }
 
 export async function FindUserByUri(actorId : string){
+   console.log("Searching for the user", actorId);
    const usersCollection = db.collection('users');
    return await usersCollection.findOne<UserDocument>({actorId})
 }
@@ -44,6 +45,6 @@ export async function AddFollower(actorId : string, followerId : string){
 );
 }
 
-const GetActorId = (username: string, baseUrl : string) => `${baseUrl}/users/${username}`
+const GetActorId = (username: string, baseUrl : string) => `${baseUrl}/api/users/${username}`
 
 

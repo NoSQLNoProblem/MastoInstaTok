@@ -8,6 +8,7 @@ import { Strategy as GoogleStrategy, type VerifyCallback } from 'passport-google
 import session from 'express-session';
 import 'dotenv/config'
 import { CreateUser } from "./services/user-service.ts";
+
 const logger = getLogger("mastointstatok-backend");
 
 export const app = express();
@@ -18,10 +19,10 @@ app.set("trust proxy", true);
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID ?? "",
   clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-  callbackURL: '/auth/google/callback',
+  callbackURL: '/api/auth/google/callback',
   passReqToCallback: true,
 }, async (req, accessToken:string, refreshToken:string, profile:Profile, done:VerifyCallback) => {
-  // create or find the user
+  // create user if they don't already exist in our system
   await CreateUser(profile, `${req.protocol}://${req.get('host')}`);
   return done(null, profile);
 }));
@@ -32,11 +33,8 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 
 app.use(passport.initialize());
 app.use(passport.session());
+
 app.use(integrateFederation(federation, (req) =>  req.user));
-
-app.use(AuthRouter);
-
-
-app.get("/", (req, res) => res.send("Hello, Fedify!"));
+app.use("/api", AuthRouter);
 
 export default app;
