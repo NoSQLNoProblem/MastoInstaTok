@@ -68,7 +68,7 @@ resource "aws_security_group" "ec2_security_group" {
 
 resource "aws_instance" "mastoinstatok_ec2_instance" {
   ami           = "ami-0b7e05c6022fc830b"
-  instance_type = "t3.micro"
+  instance_type = "t3.small"
   key_name      = "mastoinstatok-key"
   tags = {
     Name = "mastoinstatok_ec2_instance"
