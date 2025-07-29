@@ -1,13 +1,13 @@
 import express from "express";
 import { integrateFederation } from "@fedify/express";
 import { getLogger } from "@logtape/logtape";
-import federation from "./federation.ts";
-import { AuthRouter } from "./routes/auth-routes.ts";
+import federation from "./federation.js";
+import { AuthRouter } from "./routes/auth-routes.js";
 import passport, { type Profile } from "passport";
 import { Strategy as GoogleStrategy, type VerifyCallback } from 'passport-google-oauth20';
 import session from 'express-session';
 import 'dotenv/config'
-import { CreateUser } from "./services/user-service.ts";
+import { CreateUser } from "./services/user-service.js";
 
 const logger = getLogger("mastointstatok-backend");
 

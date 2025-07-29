@@ -8,8 +8,8 @@ import {
   Follow,
   Person,
 } from "@fedify/fedify";
-import { MongoKvStore } from "./lib/mongo-key-store.ts";
-import { AddFollower, FindUser, FindUserByUri } from "./services/user-service.ts";
+import { MongoKvStore } from "./lib/mongo-key-store.js";
+import { AddFollower, FindUser, FindUserByUri } from "./services/user-service.js";
 import type { Profile } from "passport";
 import type { User } from "./types/ActorTypes.ts";
 
