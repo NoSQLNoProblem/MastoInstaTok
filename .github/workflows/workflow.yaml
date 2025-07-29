@@ -1,1 +1,392 @@
-# Will do once we have AWS access
+name: "Deployment pipeline"
+env:
+  AWS_REGION: af-south-1
+
+on:
+  push:
+    branches:
+      - main
+      - development
+
+jobs:
+  terraform:
+    permissions:
+      id-token: write
+      contents: read
+    name: "Manage AWS Resources"
+    runs-on: ubuntu-latest
+    outputs:
+      ec2host: ${{ steps.tf_outputs.outputs.ec2host }}
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::804180393465:role/github-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure S3 bucket exists for backend
+        run: |
+          BUCKET_NAME="mastoinstatok-bucket-state"
+          REGION="${{ env.AWS_REGION }}"
+
+          if ! aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+            echo "Bucket does not exist. Creating..."
+            aws s3api create-bucket --bucket "$BUCKET_NAME" --region "$REGION" \
+              --create-bucket-configuration LocationConstraint="$REGION"
+          else
+            echo "Bucket already exists."
+          fi
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.0.1
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="bucket=mastoinstatok-bucket-state" -backend-config="key=terraformstate/terraform.tfstate" -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+      - name: Capture Terraform Outputs
+        id: tf_outputs
+        run: |
+          echo "ec2host=$(terraform output -raw ec2_host)" >> $GITHUB_OUTPUT
+
+  build-front-end:
+    name: Build front-end
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install required dependencies
+        run: npm install --force
+        working-directory: mastoinstatok-frontend
+      
+      - name: Build application
+        run: npm run build
+        working-directory: mastoinstatok-frontend
+
+      - name: Copy necessary files for deployment
+        working-directory: mastoinstatok-frontend
+        run: |
+          mkdir -p front-end-build
+          cp -r .next public package.json next.config.mjs front-end-build/
+      
+      - name: Package application
+        working-directory: mastoinstatok-frontend
+        run: zip -r front-end-build.zip front-end-build
+          
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: front-end-build
+          path: mastoinstatok-frontend/front-end-build.zip
+
+  deploy-frontend:
+    name: Deploy front-end to EC2
+    permissions:
+      id-token: write
+      contents: read
+    needs: 
+      - build-front-end
+      - terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::804180393465:role/github-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get secrets from AWS Key Store
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            EC2_PRIVATE_KEY, privatekey
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: front-end-build
+
+      - name: Setup private key
+        run: |
+          echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
+          chmod 0500 privatekey.pem
+
+      - name: Deploy
+        run: |
+          EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+          scp -o StrictHostKeyChecking=no -i privatekey.pem ./front-end-build.zip "ubuntu@$EC2_HOST:front-end-build.zip"
+          
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
+            unzip -o front-end-build.zip
+          '
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
+          cat <<EOF > front-end-build/start-next.sh
+          #!/bin/bash
+          cd \$(dirname "\$0")
+          npm install --force --omit=dev
+          npm run start
+          EOF'
+
+      - name: Make script executable
+        run: |
+          EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
+            chmod +x front-end-build/start-next.sh
+          '
+
+      - name: Run with pm2
+        run: |
+          EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" '
+            cd front-end-build/ && 
+            # Stop and delete existing pm2 process if it exists
+            if pm2 list | grep -q "mastoinstatok-front-end"; then
+              pm2 delete mastoinstatok-front-end;
+            fi && 
+            pm2 start ./start-next.sh --name mastoinstatok-front-end
+          '
+
+  build-api:
+    name: Build API
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install required dependencies
+        run: npm install
+        working-directory: mastointstatok-backend
+      
+      - name: Compile Typescript to Javascript
+        run: npm run build
+        working-directory: mastointstatok-backend
+
+      - name: Package application
+        working-directory: mastointstatok-backend
+        run: |
+          mkdir -p api-build
+          cp -r dist api-build/
+          cp package.json api-build/
+          zip -r api-build.zip api-build
+          
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-build
+          path: mastointstatok-backend/api-build.zip
+
+  deploy-api:
+    name: Deploy API to EC2
+    permissions:
+      id-token: write
+      contents: read
+    needs: 
+      - build-api
+      - deploy-frontend
+      - terraform
+      - setup-databases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::804180393465:role/github-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get secrets from AWS Key Store
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            EC2_PRIVATE_KEY, privatekey
+            GOOGLE_CLIENT_ID, googleclientid
+            GOOGLE_CLIENT_SECRET, googleclientsecret
+            BASE_API_URL, baseapiurl
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: api-build
+
+      - name: Setup private key
+        run: |
+          echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
+          chmod 0500 privatekey.pem
+
+      - name: Set env variables
+        run: |
+              EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+              ssh -o StrictHostKeyChecking=no -i privatekey.pem ubuntu@$EC2_HOST 'bash -s' <<'EOF'
+              sudo tee /etc/environment > /dev/null <<'ENV_VAR'
+              GOOGLE_CLIENT_ID=${{ env.GOOGLE_CLIENT_ID }}
+              GOOGLE_CLIENT_SECRET=${{ env.GOOGLE_CLIENT_SECRET }}
+              BASE_API_URL=${{ env.BASE_API_URL }}
+              ENV_VAR
+              EOF
+      
+      - name: Deploy
+        run: |
+          EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+          scp -o StrictHostKeyChecking=no -i privatekey.pem ./api-build.zip "ubuntu@$EC2_HOST:api-build.zip"
+          
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
+            unzip -o api-build.zip &&
+
+            cd api-build/ &&
+
+            npm install &&
+            
+            # Stop and delete existing pm2 process if it exists
+            if pm2 list | grep -q "mastoinstatok-api"; then
+              pm2 delete mastoinstatok-api;
+            fi &&
+            
+            cd dist &&
+            pm2 start index.js --name mastoinstatok-api
+          '
+  setup-databases:
+      name: Setup MongoDB and Redis
+      permissions:
+        id-token: write
+        contents: read
+      needs:
+        - terraform
+      runs-on: ubuntu-latest
+      steps:
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v2
+          with:
+            role-to-assume: arn:aws:iam::804180393465:role/github-role
+            aws-region: ${{ env.AWS_REGION }}
+
+        - name: Get secrets from AWS Key Store
+          uses: aws-actions/aws-secretsmanager-get-secrets@v2
+          with:
+            secret-ids: |
+              EC2_PRIVATE_KEY, privatekey
+
+        - name: Setup private key
+          run: |
+            echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
+            chmod 0500 privatekey.pem
+
+        - name: Install MongoDB and Redis on EC2
+          run: |
+            EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+
+            ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" 'bash -s' <<'EOF'
+            # Install Redis
+            sudo apt install redis-server -y
+            sudo systemctl enable redis-server
+            sudo systemctl start redis-server
+
+            # Install MongoDB
+            sudo apt-get install gnupg curl
+            curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
+            sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+            --dearmor
+            echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+            sudo apt-get update
+            sudo apt install -y mongodb-org
+            sudo systemctl enable mongod
+            sudo systemctl start mongod
+
+            # Confirm both services are running
+            systemctl status redis-server
+            systemctl status mongod
+            EOF
+
+  issue-certificates:
+    needs:
+    - deploy-api
+    - terraform
+    permissions:
+        id-token: write
+        contents: read
+    name: Issue Certificates
+    runs-on: ubuntu-latest
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::804180393465:role/github-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get secrets from AWS Key Store
+      uses: aws-actions/aws-secretsmanager-get-secrets@v2
+      with:
+        secret-ids: |
+          EC2_PRIVATE_KEY, privatekey
+
+    - name: Setup private key
+      run: |
+        echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
+        chmod 0500 privatekey.pem
+
+    - name: Setup nginx proxy
+      run: |
+        EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+
+        ssh -o StrictHostKeyChecking=no -i privatekey.pem ubuntu@$EC2_HOST 'bash -s' <<'EOF'
+        sudo tee /etc/nginx/sites-enabled/default > /dev/null <<'NGINX_CONF'
+        server {
+        listen 80;
+        server_name bbd-grad-project.co.za www.bbd-grad-project.co.za;
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/html;
+        }
+
+        location / {
+            proxy_pass http://localhost:3000; # Front-end
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        location /api/ {
+            proxy_pass http://localhost:5000; # API
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+        }
+        NGINX_CONF
+        EOF
+
+    - name: Verify and Reload nginx
+      run: |
+        EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+        ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
+          sudo nginx -t && sudo systemctl reload nginx
+        '
+
+    - name: Cerbot
+      run: |
+        EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+        ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
+          sudo apt install certbot python3-certbot-nginx -y &&
+          sudo certbot --nginx -d bbd-grad-project.co.za -d www.bbd-grad-project.co.za --non-interactive --agree-tos --email shashin.gounden@bbd.co.za
+        '
