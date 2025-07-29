@@ -14,13 +14,15 @@ export const app = express();
 
 app.set("trust proxy", true);
 
+
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID ?? "",
   clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-  callbackURL: '/auth/google/callback'
-}, async (accessToken:string, refreshToken:string, profile:Profile, done:VerifyCallback) => {
+  callbackURL: '/auth/google/callback',
+  passReqToCallback: true,
+}, async (req, accessToken:string, refreshToken:string, profile:Profile, done:VerifyCallback) => {
   // create or find the user
-  await CreateUser(profile);
+  await CreateUser(profile, `${req.protocol}://${req.get('host')}`);
   return done(null, profile);
 }));
 
