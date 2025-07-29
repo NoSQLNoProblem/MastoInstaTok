@@ -1,6 +1,6 @@
 import type { Profile } from 'passport';
 import { client } from '../lib/mongo.js';
-import { type UserDocument } from '../types/ActorTypes.ts';
+import { type UserDocument } from '../types/ActorTypes.js';
 
 client.connect();
 const db = client.db("app_db");
