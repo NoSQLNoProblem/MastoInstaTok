@@ -32,6 +32,23 @@
   margin-bottom: 15px;
 }
 
+.tryAgainButton {
+  background: #4285f4;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: background-color 0.3s ease;
+}
+
+.tryAgainButton:hover {
+  background: #3367d6;
+}
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
