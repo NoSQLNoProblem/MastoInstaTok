@@ -1,6 +1,6 @@
 import passport, { type Profile } from 'passport';
 import express from 'express';
-import { FindUser } from '../services/activity-pub/user-service.js';
+import { FindUser } from '../services/user-service.js';
 export const AuthRouter = express.Router();
 
 AuthRouter.get('/auth/google',
@@ -9,21 +9,15 @@ AuthRouter.get('/auth/google',
 
 AuthRouter.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => res.redirect('http://localhost:3000/auth/callback')
+  (req, res) => res.redirect('/auth/callback')
 );
 
-AuthRouter.get('/auth/me', (req, res) => {
+AuthRouter.get('/auth/me', async (req, res) => {
   if (req.isAuthenticated()) {
-    FindUser(req.user as Profile).then(user => {
-      if (user) {
-        res.status(200).json(user);
-      } else {
-        res.status(404).json({ message: "User not found in our database." });
-      }
-    }).catch(err => {
-        res.status(500).json({ message: "Server error while fetching user." });
-    });
-  } else {
+    const user = res.json(await FindUser(req.user as Profile))
+    if (user == null) return res.status(404).json({ error: 'No user found' })
+  } 
+  else {
     res.status(401).json({ message: 'Unauthorized' });
   }
 });

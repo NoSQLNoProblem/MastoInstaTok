@@ -1,7 +1,6 @@
 import type { Profile } from 'passport';
-import { client } from '../../lib/mongo.js';
-import { type FollowerDocument, type UserDocument } from '../../types.js';
-import { Follow } from '@fedify/fedify';
+import { client } from '../lib/mongo.js';
+import { type Actor, type FollowerDocument, type UserDocument } from '../types.js';
 import { ObjectId, type WithId } from 'mongodb';
 
 client.connect();
@@ -13,28 +12,43 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
   let user = await usersCollection.findOne<UserDocument>({ googleId: profile.id });
   if (user) return user;
 
-  const username = profile.displayName.toLowerCase().replace(/\s+/g, '');
+  const username = `${profile.displayName.toLowerCase().replace(/\s+/g, '')}-${crypto.randomUUID().split("-")[0]}`;
   const actorId = getActorId(username, baseUrl);
-
   const userToInsert = {
     googleId: profile.id,
     email: profile.emails?.[0]?.value,
-    displayName: username,
+    displayName: null,
+    bio: null,
     actorId: actorId,
-    followers: []
+    followers: [] as Actor[],
+    username
   };
 
-  return await usersCollection.insertOne(userToInsert);
+  return await AddUser(userToInsert)
+}
+
+async function AddUser(user : UserDocument){
+  return await usersCollection.insertOne(user);
 }
 
 export async function FindUser(profile: Profile) {
-  const usersCollection = db.collection<UserDocument>('users');
-  let user = await usersCollection.findOne<UserDocument>({ googleId: profile.id });
-  return user;
+  return await usersCollection.findOne<UserDocument>({ googleId: profile.id });
+}
+
+export async function FindUserByDisplayName(displayName: string) {
+  return await usersCollection.findOne<UserDocument>({ displayName })
 }
 
 export async function FindUserByUri(actorId: string) {
   return await usersCollection.findOne<UserDocument>({ actorId })
+}
+
+export async function UpdateUser(user: UserDocument) {
+  await usersCollection.updateOne(
+    { googleId: user.googleId },
+    { $set: user }
+  );
+  return usersCollection.findOne<UserDocument>({googleId:user.googleId})
 }
 
 export async function AddFollower(actorId: string, followerId: string, followerInbox: string) {

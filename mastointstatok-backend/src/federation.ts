@@ -9,10 +9,7 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import { AddFollower, FindUser, FindUserByUri, getFollowersByUserId } from "./services/activity-pub/user-service.js";
-import type { Profile } from "passport";
-import type { User } from "./types.js";
-
+import { AddFollower, FindUser, FindUserByDisplayName, FindUserByUri, getFollowersByUserId } from "./services/user-service.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -24,21 +21,16 @@ const federation = createFederation({
 const kv = new MongoKvStore();
 
 federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier) => {
-  let user: User | undefined;
-  if (identifier === "me") {
-    if (!ctx.data) return null;
-    user = await FindUser(ctx.data as Profile) as unknown as User;
-  }
-  else {
-    user = await FindUserByUri((await ctx.getActorUri(identifier)).href) as unknown as User;
-  }
+  const user = await FindUserByUri((await ctx.getActorUri(identifier)).href);
   if (!user) return null;
+
   return new Person({
     id: new URL(user.actorId),
     preferredUsername: user.displayName,
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
+    summary: user.bio,
     publicKeys: (await ctx.getActorKeyPairs(identifier))
       .map(keyPair => keyPair.cryptographicKey),
   });
@@ -63,7 +55,11 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
   const privateKey = await importJwk(entry.privateKey, "private");
   const publicKey = await importJwk(entry.publicKey, "public");
   return [{ privateKey, publicKey }];
-});
+}).mapHandle(async (ctx, username) => {
+    const user = await FindUserByDisplayName(username);
+    if (user == null) return null;  
+    return user.username;
+  });;
 
 federation
   .setFollowersDispatcher(
@@ -82,40 +78,6 @@ federation
     }
   )
   .setFirstCursor(async (ctx, identifier) => "");
-
-const window = 10;
-
-// federation
-//   .setOutboxDispatcher("/users/{identifier}/outbox", async (ctx, identifier, cursor) => {
-//     if (cursor == null) return null;
-//     // Here we use the offset numeric value as the cursor:
-//     const offset = parseInt(cursor);
-//     // The following `getPostsByUserId` is a hypothetical function:
-//     const posts = await getPostsByUserId(
-//       identifier,
-//       { offset, limit: window }
-//     );
-//     // Turn the posts into `Create` activities:
-//     const items = posts.map((post:any) =>
-//       new Create({
-//         id: new URL(`/posts/${post.id}#activity`, ctx.url),
-//         actor: ctx.getActorUri(identifier),
-//         object: new Note({
-//           id: new URL(`/posts/${post.id}`, ctx.url),
-//           summary: post.title,
-//           content: post.content,
-//         }),
-//       })
-//     );
-//     return { items, nextCursor: (offset + window).toString() }
-//   })
-//   .setFirstCursor(async (ctx, identifier) => "0")
-//   .setLastCursor(async (ctx, identifier) => {
-//     // The following `countPostsByUserId` is a hypothetical function:
-//     const total = await countPostsByUserId(identifier);
-//     // The last cursor is the offset of the last page:
-//     return (total - (total % window)).toString();
-//   });
 
 federation
   .setInboxListeners("/api/users/{identifier}/inbox", "/inbox")
