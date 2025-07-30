@@ -10,8 +10,6 @@ import {
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
 import { AddFollower, FindUser, FindUserByDisplayName, FindUserByUri, getFollowersByUserId } from "./services/user-service.js";
-import type { Profile } from "passport";
-import type { User } from "./types.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -23,21 +21,16 @@ const federation = createFederation({
 const kv = new MongoKvStore();
 
 federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier) => {
-  let user: User | undefined;
-  if (identifier === "me") {
-    if (!ctx.data) return null;
-    user = await FindUser(ctx.data as Profile) as unknown as User;
-  }
-  else {
-    user = await FindUserByUri((await ctx.getActorUri(identifier)).href) as unknown as User;
-  }
+  const user = await FindUserByUri((await ctx.getActorUri(identifier)).href);
   if (!user) return null;
+
   return new Person({
     id: new URL(user.actorId),
     preferredUsername: user.displayName,
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
+    summary: user.bio,
     publicKeys: (await ctx.getActorKeyPairs(identifier))
       .map(keyPair => keyPair.cryptographicKey),
   });
@@ -63,9 +56,8 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
   const publicKey = await importJwk(entry.publicKey, "public");
   return [{ privateKey, publicKey }];
 }).mapHandle(async (ctx, username) => {
-    // Work with the database to find the user's UUID by the WebFinger username.
     const user = await FindUserByDisplayName(username);
-    if (user == null) return null;  // Return null if the actor is not found.
+    if (user == null) return null;  
     return user.username;
   });;
 
