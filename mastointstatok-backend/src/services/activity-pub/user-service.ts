@@ -1,6 +1,6 @@
 import type { Profile } from 'passport';
 import { client } from '../../lib/mongo.js';
-import { type FollowerDocument, type UserDocument } from '../../types/ActorTypes.js';
+import { type FollowerDocument, type UserDocument } from '../../types.js';
 import { Follow } from '@fedify/fedify';
 import { ObjectId, type WithId } from 'mongodb';
 
@@ -34,7 +34,6 @@ export async function FindUser(profile: Profile) {
 }
 
 export async function FindUserByUri(actorId: string) {
-  console.log("Searching for the user", actorId);
   return await usersCollection.findOne<UserDocument>({ actorId })
 }
 
@@ -49,23 +48,19 @@ export async function AddFollower(actorId: string, followerId: string, followerI
 
 export async function getFollowersByUserId(actorId: string, options: { cursor: string, limit: 10 }) {
   const { cursor, limit } = options
-  const lastFollower = (await followers.find({actorId}).sort({_id: -1}).limit(1).toArray())[0];
+  const lastFollower = (await followers.find({ actorId }).sort({ _id: -1 }).limit(1).toArray())[0];
   let users: WithId<FollowerDocument>[];
-  console.log("actorID is" , actorId);
-  console.log("the cursor is", cursor);
   if (cursor == "\"") {
-    console.log("made it in here");
-    users = await followers.find({ actorId }).sort({ _id: 1 }).limit(limit).toArray(); 
+    users = await followers.find({ actorId }).sort({ _id: 1 }).limit(limit).toArray();
   }
-  else{
+  else {
     users = await followers.find({ actorId, _id: { $gt: new ObjectId(cursor) } }).limit(limit).toArray()
   }
-  console.log(users)
   return {
     users,
     nextCursor: users[users.length - 1]?._id.toHexString(),
     last: users[users.length - 1]?._id === lastFollower?._id
-}
+  }
 }
 
 const getActorId = (username: string, baseUrl: string) => `${baseUrl}/api/users/${username}`

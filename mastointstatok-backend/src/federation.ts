@@ -11,7 +11,7 @@ import {
 import { MongoKvStore } from "./lib/mongo-key-store.js";
 import { AddFollower, FindUser, FindUserByUri, getFollowersByUserId } from "./services/activity-pub/user-service.js";
 import type { Profile } from "passport";
-import type { User } from "./types/ActorTypes.ts";
+import type { User } from "./types.js";
 
 
 const logger = getLogger("mastointstatok-backend");
