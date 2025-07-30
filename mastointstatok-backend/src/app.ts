@@ -8,7 +8,7 @@ import passport, { type Profile } from "passport";
 import { Strategy as GoogleStrategy, type VerifyCallback } from 'passport-google-oauth20';
 import session from 'express-session';
 import 'dotenv/config'
-import { CreateUser } from "./services/user-service.js";
+import { CreateUser } from "./services/activity-pub/user-service.js";
 
 const logger = getLogger("mastointstatok-backend");
 

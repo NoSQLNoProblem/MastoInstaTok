@@ -11,5 +11,15 @@ export type UserDocument = {
     email: string
     displayName: string,
     actorId: string,
-    followers: string[]
   };
+
+export type Actor = {
+  uri : string,
+  inboxUri : string
+}
+
+export type FollowerDocument = {
+  uri : string,
+  inboxUri : string,
+  actorId : string
+}
