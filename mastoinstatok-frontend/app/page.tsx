@@ -8,6 +8,6 @@ export default async function HomePage() {
   if (isAuthenticated) {
     redirect("/feed")
   } else {
-    redirect("/registration")
+    redirect("/auth")
   }
 }
