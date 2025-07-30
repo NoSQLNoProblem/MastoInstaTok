@@ -1,94 +1,96 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import Navigation from "@/components/Navigation"
-import Post from "@/components/Post"
-import styles from "./feed.module.css"
+import { useState, useEffect, useCallback, useRef } from "react"; // 👈 1. Import useRef
+import { useRouter } from "next/navigation";
+import Navigation from "@/components/Navigation";
+import Post from "@/components/Post";
+import styles from "./feed.module.css";
 
 interface PostData {
-  id: string
-  username: string
-  image: string
-  caption: string
-  likes: number
-  isLiked: boolean
-  timestamp: number
+  id: string;
+  username: string;
+  avatar?: string;
+  imageURL: string;
+  caption: string;
+  likes: number;
+  isLiked: boolean;
+  timestamp: string;
 }
 
+const PAGE_SIZE = 5;
+
 export default function FeedPage() {
-  const [posts, setPosts] = useState<PostData[]>([])
-  const [loading, setLoading] = useState(false)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const router = useRouter()
+  const [posts, setPosts] = useState<PostData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nextOffset, setNextOffset] = useState<number>(0);
+  const [remainingOffset, setRemainingOffset] = useState<number>(0);
+  const router = useRouter();
 
-  // Check authentication
-  useEffect(() => {
-    const authToken = document.cookie.includes("auth-token=authenticated")
-    if (!authToken) {
-      router.push("/auth")
-    }
-  }, [router])
+  const isLoadingRef = useRef(false);
 
-  // Generate mock posts
-  const generateMockPosts = useCallback((pageNum: number): PostData[] => {
-    const mockPosts: PostData[] = []
-    const baseTime = Date.now()
+  const fetchPosts = useCallback(
+    async (offset: number) => {
+      if (isLoadingRef.current || offset === -1) return;
 
-    for (let i = 0; i < 5; i++) {
-      const postId = `${pageNum}-${i}`
-      mockPosts.push({
-        id: postId,
-        username: `user${Math.floor(Math.random() * 100)}`,
-        image: `/placeholder.svg?height=400&width=400&query=social media post ${postId}`,
-        caption: `This is a sample post caption for post ${postId}. #socialapp #photography`,
-        likes: Math.floor(Math.random() * 100),
-        isLiked: Math.random() > 0.5,
-        timestamp: baseTime - (pageNum * 5 + i) * 3600000, // Posts ordered by timestamp
-      })
-    }
+      isLoadingRef.current = true; 
+      setLoading(true);
+      setError(null);
 
-    return mockPosts.sort((a, b) => b.timestamp - a.timestamp)
-  }, [])
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
+          // `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,  this is to use the post mocking in api/feed/route.ts
+          {
+            credentials: "include",
+          }
+        );
 
-  // Load initial posts
-  useEffect(() => {
-    const initialPosts = generateMockPosts(1)
-    setPosts(initialPosts)
-  }, [generateMockPosts])
+        if (!response.ok) {
+          if (response.status === 401) {
+            router.push("/auth");
+            return;
+          }
+          throw new Error(`Failed to fetch feed. Status: ${response.status}`);
+        }
 
-  // Load more posts
-  const loadMorePosts = useCallback(() => {
-    if (loading || !hasMore) return
+        const data = await response.json();
 
-    setLoading(true)
-
-    // Simulate API delay
-    setTimeout(() => {
-      const newPosts = generateMockPosts(page + 1)
-      setPosts((prev) => [...prev, ...newPosts])
-      setPage((prev) => prev + 1)
-      setLoading(false)
-
-      // Stop loading after 5 pages
-      if (page >= 5) {
-        setHasMore(false)
+        setPosts((prev) =>
+          offset === 0 ? data.posts : [...prev, ...data.posts]
+        );
+        setNextOffset(data.nextOffset);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred."
+        );
+        setNextOffset(-1);
+      } finally {
+        setLoading(false);
+        isLoadingRef.current = false; 
       }
-    }, 1000)
-  }, [loading, hasMore, page, generateMockPosts])
+    },
+    [router]
+  );
 
-  // Infinite scroll
+  useEffect(() => {
+    fetchPosts(0);
+  }, [fetchPosts]);
+
   useEffect(() => {
     const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
-        loadMorePosts()
+      if (
+        window.innerHeight + document.documentElement.scrollTop >=
+          document.documentElement.offsetHeight - 1000 &&
+        nextOffset !== -1
+      ) {
+        fetchPosts(nextOffset);
       }
-    }
+    };
 
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [loadMorePosts])
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [nextOffset, fetchPosts]); 
 
   const handleLike = (postId: string) => {
     setPosts((prev) =>
@@ -99,35 +101,66 @@ export default function FeedPage() {
               isLiked: !post.isLiked,
               likes: post.isLiked ? post.likes - 1 : post.likes + 1,
             }
-          : post,
-      ),
-    )
-  }
+          : post
+      )
+    );
+  };
+
+  const handleTryAgain = () => {
+    setError(null);
+    setPosts([]);
+    setNextOffset(0);
+    fetchPosts(0);
+  };
+
+  const renderContent = () => {
+    if (loading && posts.length === 0) {
+      return (
+        <div className={styles.loading}>
+          <div className={styles.spinner}></div>
+          <p>Loading posts...</p>
+        </div>
+      );
+    }
+
+    if (error && posts.length === 0) {
+      return (
+        <div className={styles.endMessage}>
+          <p>Oops! Something went wrong.</p>
+          <p>{error}</p>
+          <button onClick={handleTryAgain} className={styles.tryAgainButton}>
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {posts.map((post) => (
+          <Post key={post.id} post={post} onLike={handleLike} />
+        ))}
+        {loading && (
+          <div className={styles.loading}>
+            <div className={styles.spinner}></div>
+            <p>Loading more posts...</p>
+          </div>
+        )}
+        {nextOffset === -1 && !loading && posts.length > 0 && (
+          <div className={styles.endMessage}>
+            <p>You've reached the end!</p>
+          </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className={styles.container}>
       <Navigation />
-
       <main className={styles.main}>
-        <div className={styles.feed}>
-          {posts.map((post) => (
-            <Post key={post.id} post={post} onLike={handleLike} />
-          ))}
-
-          {loading && (
-            <div className={styles.loading}>
-              <div className={styles.spinner}></div>
-              <p>Loading more posts...</p>
-            </div>
-          )}
-
-          {!hasMore && posts.length > 0 && (
-            <div className={styles.endMessage}>
-              <p>You've reached the end!</p>
-            </div>
-          )}
-        </div>
+        <div className={styles.feed}>{renderContent()}</div>
       </main>
     </div>
-  )
+  );
 }

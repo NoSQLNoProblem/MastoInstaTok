@@ -8,7 +8,7 @@ AuthRouter.get('/auth/google',
 
 AuthRouter.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => res.redirect('/')
+  (req, res) => res.redirect('http://localhost:3000/feed')
 );
 
 AuthRouter.get('/logout', (req, res) => {
