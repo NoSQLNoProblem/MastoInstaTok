@@ -8,9 +8,12 @@ export type User = {
 
 export type UserDocument = {
     googleId: string,
-    email: string
-    displayName: string,
+    email: string | undefined
+    displayName: string | null,
     actorId: string,
+    bio : string | null,
+    followers: Actor[],
+    username: string
   };
 
 export type Actor = {

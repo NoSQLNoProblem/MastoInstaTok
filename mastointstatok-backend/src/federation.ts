@@ -9,10 +9,9 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import { AddFollower, FindUser, FindUserByUri, getFollowersByUserId } from "./services/activity-pub/user-service.js";
+import { AddFollower, FindUser, FindUserByDisplayName, FindUserByUri, getFollowersByUserId } from "./services/user-service.js";
 import type { Profile } from "passport";
 import type { User } from "./types.js";
-
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -63,7 +62,12 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
   const privateKey = await importJwk(entry.privateKey, "private");
   const publicKey = await importJwk(entry.publicKey, "public");
   return [{ privateKey, publicKey }];
-});
+}).mapHandle(async (ctx, username) => {
+    // Work with the database to find the user's UUID by the WebFinger username.
+    const user = await FindUserByDisplayName(username);
+    if (user == null) return null;  // Return null if the actor is not found.
+    return user.username;
+  });;
 
 federation
   .setFollowersDispatcher(
@@ -82,40 +86,6 @@ federation
     }
   )
   .setFirstCursor(async (ctx, identifier) => "");
-
-const window = 10;
-
-// federation
-//   .setOutboxDispatcher("/users/{identifier}/outbox", async (ctx, identifier, cursor) => {
-//     if (cursor == null) return null;
-//     // Here we use the offset numeric value as the cursor:
-//     const offset = parseInt(cursor);
-//     // The following `getPostsByUserId` is a hypothetical function:
-//     const posts = await getPostsByUserId(
-//       identifier,
-//       { offset, limit: window }
-//     );
-//     // Turn the posts into `Create` activities:
-//     const items = posts.map((post:any) =>
-//       new Create({
-//         id: new URL(`/posts/${post.id}#activity`, ctx.url),
-//         actor: ctx.getActorUri(identifier),
-//         object: new Note({
-//           id: new URL(`/posts/${post.id}`, ctx.url),
-//           summary: post.title,
-//           content: post.content,
-//         }),
-//       })
-//     );
-//     return { items, nextCursor: (offset + window).toString() }
-//   })
-//   .setFirstCursor(async (ctx, identifier) => "0")
-//   .setLastCursor(async (ctx, identifier) => {
-//     // The following `countPostsByUserId` is a hypothetical function:
-//     const total = await countPostsByUserId(identifier);
-//     // The last cursor is the offset of the last page:
-//     return (total - (total % window)).toString();
-//   });
 
 federation
   .setInboxListeners("/api/users/{identifier}/inbox", "/inbox")
