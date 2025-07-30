@@ -5,6 +5,7 @@
     "@fedify/express": "^0.2.1",
     "@fedify/fedify": "^1.7.7",
     "@logtape/logtape": "^0.8.2",
+    "dotenv": "^17.2.1",
     "express": "^4.19.2",
     "express-session": "^1.18.2",
     "mongodb": "^6.18.0",
