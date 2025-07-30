@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import Post from "@/components/Post";
 import styles from "./feed.module.css";
+import { apiService } from "@/services/apiService";
 
 interface PostData {
   id: string;
@@ -24,7 +25,6 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextOffset, setNextOffset] = useState<number>(0);
-  const [remainingOffset, setRemainingOffset] = useState<number>(0);
   const router = useRouter();
 
   const isLoadingRef = useRef(false);
@@ -33,28 +33,26 @@ export default function FeedPage() {
     async (offset: number) => {
       if (isLoadingRef.current || offset === -1) return;
 
-      isLoadingRef.current = true; 
+      isLoadingRef.current = true;
       setLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(
-          `http://localhost:5000/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
-          // `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,  this is to use the post mocking in api/feed/route.ts
-          {
-            credentials: "include",
-          }
+
+        // THIS IS FOR TESTING VIA MOCKS
+        //==========================================
+        // const response = await fetch(
+        //   `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
+        //   {
+        //     credentials: "include",
+        //   }
+        // );
+        // const data = await response.json();
+        //===========================================
+
+        const data = await apiService.get(
+          `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
         );
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            router.push("/auth");
-            return;
-          }
-          throw new Error(`Failed to fetch feed. Status: ${response.status}`);
-        }
-
-        const data = await response.json();
 
         setPosts((prev) =>
           offset === 0 ? data.posts : [...prev, ...data.posts]
@@ -67,7 +65,7 @@ export default function FeedPage() {
         setNextOffset(-1);
       } finally {
         setLoading(false);
-        isLoadingRef.current = false; 
+        isLoadingRef.current = false;
       }
     },
     [router]
@@ -90,7 +88,7 @@ export default function FeedPage() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [nextOffset, fetchPosts]); 
+  }, [nextOffset, fetchPosts]);
 
   const handleLike = (postId: string) => {
     setPosts((prev) =>

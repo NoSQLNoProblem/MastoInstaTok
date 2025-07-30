@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { integrateFederation } from "@fedify/express";
 import { getLogger } from "@logtape/logtape";
 import federation from "./federation.js";
@@ -13,8 +14,26 @@ const logger = getLogger("mastointstatok-backend");
 
 export const app = express();
 
-app.set("trust proxy", true);
+const clientOrigin = 'http://localhost:3000';
+const clientApiPaths = ['/api/feed', '/api/auth/me', '/api/auth/logout', '/api/auth/google']; // Add the client paths here.
 
+const corsOptionsDelegate = (req: express.Request, callback: (err: Error | null, options?: cors.CorsOptions) => void) => {
+  let corsOptions;
+  // Check if the request path is one of our client api routes
+  if (clientApiPaths.some(path => req.path.startsWith(path))) {
+    // If from client, use strict cors.
+    corsOptions = { origin: clientOrigin, credentials: true };
+  } else {
+    // Otherwise, it's a public/federated route, so allow any origin.
+    // This is necessary for server-to-server communication in ActivityPub.
+    corsOptions = { origin: '*' };
+  }
+  callback(null, corsOptions); 
+};
+
+app.use(cors(corsOptionsDelegate));
+
+app.set("trust proxy", true);
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID ?? "",
