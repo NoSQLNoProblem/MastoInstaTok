@@ -31,6 +31,9 @@ export default function Navigation() {
           <Link href="/create" className={`${styles.navLink} ${pathname === "/create" ? styles.active : ""}`}>
             ➕ Create
           </Link>
+          <Link href="/profile" className={`${styles.navLink} ${pathname === "/profile" ? styles.active : ""}`}>
+            👤 Profile
+          </Link>
           <button onClick={handleLogout} className={styles.logoutButton}>
             🚪 Logout
           </button>
