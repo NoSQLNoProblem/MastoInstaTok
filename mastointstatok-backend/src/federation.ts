@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, Article, Create, InProcessMessageQueue, Note, OrderedCollection, type Recipient } from "@fedify/fedify";
+import { Accept, Article, Create, Endpoints, InProcessMessageQueue, Note, OrderedCollection, type Recipient } from "@fedify/fedify";
 import {
   createFederation,
   exportJwk,
@@ -10,6 +10,7 @@ import {
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
 import { AddFollower, FindUser, FindUserByDisplayName, FindUserByUri, getFollowersByUserId } from "./services/user-service.js";
+import type { FollowerDocument, UserDocument } from "./types.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -26,40 +27,51 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
 
   return new Person({
     id: new URL(user.actorId),
-    preferredUsername: user.displayName,
+    preferredUsername: user.username,
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
+    endpoints: new Endpoints({sharedInbox: ctx.getInboxUri()}),
     summary: user.bio,
+    following: ctx.getFollowingUri(identifier),
     publicKeys: (await ctx.getActorKeyPairs(identifier))
       .map(keyPair => keyPair.cryptographicKey),
   });
 }).setKeyPairsDispatcher(async (ctx, identifier) => {
-  const entry = await kv.get<{
-    privateKey: JsonWebKey;
-    publicKey: JsonWebKey;
-  }>(["key", identifier]);
+  const entry = await kv.get<{rsaKeyPair:{
+    privateKey: JsonWebKey
+    publicKey: JsonWebKey
+  },
+  edKeyPair:{
+    privateKey: JsonWebKey
+    publicKey: JsonWebKey
+  }}>(["key", identifier]);
   if (entry == null) {
-    const { privateKey, publicKey } =
+    const { privateKey: rsaPrivKey, publicKey: rsaPubKey } =
       await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+
+    const { privateKey: edPrivKey, publicKey: edPubKey } =
+      await generateCryptoKeyPair("Ed25519");
 
     await kv.set(
       ["key", identifier],
-      {
-        privateKey: await exportJwk(privateKey),
-        publicKey: await exportJwk(publicKey),
-      }
+      {rsaKeyPair: {
+        privateKey: await exportJwk(rsaPrivKey),
+        publicKey: await exportJwk(rsaPubKey),
+      },edKeyPair: {
+        privateKey: await exportJwk(edPrivKey),
+        publicKey: await exportJwk(edPubKey),
+      }}
     );
-    return [{ privateKey, publicKey }];
+    return [{ privateKey: rsaPrivKey, publicKey: rsaPubKey }, {privateKey: edPrivKey, publicKey: edPubKey}];
   }
-  const privateKey = await importJwk(entry.privateKey, "private");
-  const publicKey = await importJwk(entry.publicKey, "public");
-  return [{ privateKey, publicKey }];
-}).mapHandle(async (ctx, username) => {
-    const user = await FindUserByDisplayName(username);
-    if (user == null) return null;  
-    return user.username;
-  });;
+  const rsaPrivateKey = await importJwk(entry.rsaKeyPair.privateKey, "private");
+  const rsaPublicKey = await importJwk(entry.rsaKeyPair.publicKey, "public");
+  const edPrivateKey = await importJwk(entry.edKeyPair.privateKey, "private");
+  const edPublicKey = await importJwk(entry.edKeyPair.publicKey, "public");
+
+  return [{ privateKey : rsaPrivateKey, publicKey:rsaPublicKey}, { privateKey : edPrivateKey, publicKey:edPublicKey}];
+})
 
 federation
   .setFollowersDispatcher(
@@ -70,17 +82,26 @@ federation
         ctx.getActorUri(identifier).href,
         { cursor, limit: 10 }
       );
-      const items: Recipient[] = users.map((actor: any) => ({
+      console.log(ctx.getActorUri(identifier))
+      console.log(users)
+      const items: Recipient[] = users.map((actor: FollowerDocument) => ({
         id: new URL(actor.uri),
         inboxId: new URL(actor.inboxUri),
+        endpoints: {
+                    sharedInbox: actor.inboxUri ? new URL(actor.inboxUri) : null,
+        },
       }));
       return { items, nextCursor: last ? null : nextCursor };
     }
   )
   .setFirstCursor(async (ctx, identifier) => "");
 
+federation.setFollowingDispatcher("/api/users/{identifier}/following", async (ctx, identifier, cursor)=>{
+  return null;
+})
+
 federation
-  .setInboxListeners("/api/users/{identifier}/inbox", "/inbox")
+  .setInboxListeners("/api/users/{identifier}/inbox", "/api/inbox")
   .on(Follow, async (ctx, follow) => {
     if (follow.id == null || follow.actorId == null || follow.objectId == null) {
       return;
@@ -93,7 +114,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow, to: follow.actorId }),
     );
     AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
   });
