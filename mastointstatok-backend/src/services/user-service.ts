@@ -2,6 +2,8 @@ import type { Profile } from 'passport';
 import { client } from '../lib/mongo.js';
 import { type FollowerDocument, type UserDocument } from '../types.js';
 import { ObjectId, type WithId } from 'mongodb';
+import federation, { createContext } from '../federation.js';
+import {type Request } from 'express';
 
 client.connect();
 const db = client.db("app_db");
@@ -20,7 +22,8 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
     displayName: null,
     bio: null,
     actorId: actorId,
-    username
+    username,
+    fullHandle:`@${username}@${baseUrl.split("//")[1]}`
   };
 
   return await AddUser(userToInsert)
@@ -44,6 +47,21 @@ export async function FindUserByUri(actorId: string) {
 
 export async function FindUserByUsername(username: string){
   return await usersCollection.findOne<UserDocument>({ username })
+}
+
+export async function FindUserByUserHandle(userHandle : string, request:Request){
+    const ctx = createContext(request);
+    const actor = await ctx.lookupObject(userHandle);
+    const actorId = actor?.id;
+    const summary = actor?.summary
+    if(!actorId) return null
+    const user : UserDocument = {
+      actorId : actorId.href,
+      bio : summary as string,
+      displayName: actor.name as string,
+      fullHandle : userHandle,
+    }
+    return user;
 }
 
 export async function UpdateUser(user: UserDocument) {

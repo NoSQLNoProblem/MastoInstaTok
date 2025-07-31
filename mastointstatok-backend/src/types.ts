@@ -1,10 +1,11 @@
 export type UserDocument = {
-    googleId: string,
-    email: string | undefined
+    googleId ?: string,
+    email ?: string | undefined
     displayName: string | null,
     actorId: string,
     bio : string | null,
-    username: string
+    username ?: string
+    fullHandle : string
   };
 
 export type FollowerDocument = {

@@ -11,6 +11,7 @@ import {
 import { MongoKvStore } from "./lib/mongo-key-store.js";
 import { AddFollower, FindUser, FindUserByDisplayName, FindUserByUri, getFollowersByUserId } from "./services/user-service.js";
 import type { FollowerDocument, UserDocument } from "./types.js";
+import { type Request } from "express";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -118,5 +119,11 @@ federation
     );
     AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
   });
+
+export function createContext(request:Request){
+  const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
+  return federation.createContext(new URL(url), undefined);
+}
+
 
 export default federation;
