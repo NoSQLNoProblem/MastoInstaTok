@@ -1,24 +1,28 @@
 "use client"
 
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
+import { useAuth } from "@/contexts/AuthContext"
 import styles from "./Navigation.module.css"
 
 export default function Navigation() {
   const pathname = usePathname()
-  const router = useRouter()
+  const { logout, isAuthenticated } = useAuth() 
 
   const handleLogout = () => {
-    document.cookie = "auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-    document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-    router.push("/auth")
+    logout();
+  }
+
+  if (!isAuthenticated) {
+    // Render nothing or a minimal version if the user is not logged in
+    return null; 
   }
 
   return (
     <nav className={styles.nav}>
       <div className={styles.container}>
         <Link href="/feed" className={styles.logo}>
-          SocialApp
+          🦕🫵‼️
         </Link>
 
         <div className={styles.navLinks}>

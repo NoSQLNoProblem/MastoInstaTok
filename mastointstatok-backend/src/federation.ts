@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, InProcessMessageQueue } from "@fedify/fedify";
+import { Accept, Article, Create, InProcessMessageQueue, Note, OrderedCollection, type Recipient } from "@fedify/fedify";
 import {
   createFederation,
   exportJwk,
@@ -9,10 +9,7 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import { AddFollower, FindUser, FindUserByUri } from "./services/user-service.js";
-import type { Profile } from "passport";
-import type { User } from "./types/ActorTypes.ts";
-
+import { AddFollower, FindUser, FindUserByDisplayName, FindUserByUri, getFollowersByUserId } from "./services/user-service.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -24,20 +21,16 @@ const federation = createFederation({
 const kv = new MongoKvStore();
 
 federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier) => {
-  let user: User | undefined;
-  if (identifier === "me") {
-    if (!ctx.data) return null;
-    user = await FindUser(ctx.data as Profile) as unknown as User;
-  }
-  else {
-    user = await FindUserByUri((await ctx.getActorUri(identifier)).href) as unknown as User;
-  }
+  const user = await FindUserByUri((await ctx.getActorUri(identifier)).href);
   if (!user) return null;
+
   return new Person({
     id: new URL(user.actorId),
     preferredUsername: user.displayName,
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
+    followers: ctx.getFollowersUri(identifier),
+    summary: user.bio,
     publicKeys: (await ctx.getActorKeyPairs(identifier))
       .map(keyPair => keyPair.cryptographicKey),
   });
@@ -62,7 +55,29 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
   const privateKey = await importJwk(entry.privateKey, "private");
   const publicKey = await importJwk(entry.publicKey, "public");
   return [{ privateKey, publicKey }];
-});
+}).mapHandle(async (ctx, username) => {
+    const user = await FindUserByDisplayName(username);
+    if (user == null) return null;  
+    return user.username;
+  });;
+
+federation
+  .setFollowersDispatcher(
+    "/api/users/{identifier}/followers",
+    async (ctx, identifier, cursor) => {
+      if (cursor == null) return null;
+      const { users, nextCursor, last } = await getFollowersByUserId(
+        ctx.getActorUri(identifier).href,
+        { cursor, limit: 10 }
+      );
+      const items: Recipient[] = users.map((actor: any) => ({
+        id: new URL(actor.uri),
+        inboxId: new URL(actor.inboxUri),
+      }));
+      return { items, nextCursor: last ? null : nextCursor };
+    }
+  )
+  .setFirstCursor(async (ctx, identifier) => "");
 
 federation
   .setInboxListeners("/api/users/{identifier}/inbox", "/inbox")
@@ -80,8 +95,7 @@ federation
       follower,
       new Accept({ actor: follow.objectId, object: follow }),
     );
-    AddFollower(follow.objectId.href, follow.actorId.href)
-    await kv.set(["followers", follow.id.href], follow.actorId.href);
+    AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
   });
 
 export default federation;
