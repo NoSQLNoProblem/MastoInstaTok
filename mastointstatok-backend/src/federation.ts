@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, Article, Create, Endpoints, InProcessMessageQueue, Note, OrderedCollection, type Recipient } from "@fedify/fedify";
+import { Accept, Endpoints, InProcessMessageQueue, Note, OrderedCollection, type Recipient } from "@fedify/fedify";
 import {
   createFederation,
   exportJwk,
@@ -9,8 +9,10 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import { AddFollower, FindUser, FindUserByDisplayName, FindUserByUri, getFollowersByUserId } from "./services/user-service.js";
-import type { FollowerDocument, UserDocument } from "./types.js";
+import type { Follower, User } from "./types.js";
+import { type Request } from "express";
+import { FindUserByUri } from "./database/user-queries.js";
+import { AddFollower, getInternalUsersFollowersByUserId } from "./database/follow-queries.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -78,13 +80,13 @@ federation
     "/api/users/{identifier}/followers",
     async (ctx, identifier, cursor) => {
       if (cursor == null) return null;
-      const { users, nextCursor, last } = await getFollowersByUserId(
+      const { users, nextCursor, last } = await getInternalUsersFollowersByUserId(
         ctx.getActorUri(identifier).href,
         { cursor, limit: 10 }
       );
       console.log(ctx.getActorUri(identifier))
       console.log(users)
-      const items: Recipient[] = users.map((actor: FollowerDocument) => ({
+      const items: Recipient[] = users.map((actor: Follower) => ({
         id: new URL(actor.uri),
         inboxId: new URL(actor.inboxUri),
         endpoints: {
@@ -94,7 +96,7 @@ federation
       return { items, nextCursor: last ? null : nextCursor };
     }
   )
-  .setFirstCursor(async (ctx, identifier) => "");
+  .setFirstCursor((ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
 federation.setFollowingDispatcher("/api/users/{identifier}/following", async (ctx, identifier, cursor)=>{
   return null;
@@ -118,5 +120,10 @@ federation
     );
     AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
   });
+
+export function createContext(request:Request){
+  const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
+  return federation.createContext(new URL(url), undefined);
+}
 
 export default federation;
