@@ -95,7 +95,7 @@ federation
       return { items, nextCursor: last ? null : nextCursor };
     }
   )
-  .setFirstCursor(async (ctx, identifier) => "");
+  .setFirstCursor((ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
 federation.setFollowingDispatcher("/api/users/{identifier}/following", async (ctx, identifier, cursor)=>{
   return null;

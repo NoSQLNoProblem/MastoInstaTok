@@ -2,7 +2,7 @@ import type { Profile } from 'passport';
 import { client } from '../lib/mongo.js';
 import { type FollowerDocument, type UserDocument } from '../types.js';
 import { ObjectId, type WithId } from 'mongodb';
-import federation, { createContext } from '../federation.js';
+import { createContext } from '../federation.js';
 import {type Request } from 'express';
 
 client.connect();
@@ -84,14 +84,13 @@ export async function AddFollower(actorId: string, followerId: string, followerI
 
 export async function getFollowersByUserId(actorId: string, options: { cursor: string, limit: 10 }) {
   const { cursor, limit } = options
-  console.log("is it working at all")
   const lastFollower = (await followersCollection.find({ actorId }).sort({ _id: -1 }).limit(1).toArray())[0];
   let users: WithId<FollowerDocument>[];
-  if (cursor == "\"") {
-    users = await followersCollection.find({ actorId }).sort({ _id: 1 }).limit(limit).toArray();
+  if (cursor == Number.MAX_SAFE_INTEGER.toString()) {
+    users = await followersCollection.find({ actorId }).sort({ _id: -1 }).limit(limit).toArray();
   }
   else {
-    users = await followersCollection.find({ actorId, _id: { $gt: new ObjectId(cursor) } }).limit(limit).toArray()
+    users = await followersCollection.find({ actorId, _id: { $lt: new ObjectId(cursor) } }).sort({_id : -1}).limit(limit).toArray()
   }
   return {
     users,
