@@ -1,4 +1,4 @@
-export type UserDocument = {
+export type User = {
     googleId ?: string,
     email ?: string | undefined
     displayName: string | null,
@@ -8,7 +8,7 @@ export type UserDocument = {
     fullHandle : string
   };
 
-export type FollowerDocument = {
+export type Follower = {
   uri : string,
   inboxUri : string,
   actorId : string

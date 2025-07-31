@@ -1,6 +1,6 @@
 import passport, { type Profile } from 'passport';
 import express from 'express';
-import { FindUser } from '../services/user-service.js';
+import { FindUser } from '../database/user-queries.js';
 export const AuthRouter = express.Router();
 
 AuthRouter.get('/auth/google',
