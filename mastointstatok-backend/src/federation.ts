@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, Endpoints, InProcessMessageQueue, Note, OrderedCollection, type Context, type Recipient } from "@fedify/fedify";
+import { Accept, Endpoints, InProcessMessageQueue, type Context, type Recipient } from "@fedify/fedify";
 import {
   createFederation,
   exportJwk,
@@ -9,7 +9,7 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import type { AcceptObject, Follower, FollowObject, User } from "./types.js";
+import type { AcceptObject, Follower, FollowObject} from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
 import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
@@ -200,10 +200,7 @@ export async function sendFollow(
       object: recipient.id,
     }),
   );
-  console.log("getting here")
-  // this should only happen after the accept has been handled by our inbox listener
-  console.log("The actor is",  ctx.getActorUri(sender.identifier));
-  console.log("the object is", recipient.id );
+
   insertFollowRecord({
     id: `${ctx.canonicalOrigin}/users/${senderId}/follows/${resourceGUID}`,
     actor: ctx.getActorUri(sender.identifier).href,

@@ -12,7 +12,11 @@ export async function AddFollower(actorId: string, followerId: string, followerI
         inboxUri: followerInbox,
         actorId: actorId
     }
-    return await followersCollection.insertOne(followerToInsert);
+    if(await followersCollection.findOne(followerToInsert)){
+        return false;
+    }
+    await followersCollection.insertOne(followerToInsert);
+    return true;
 }
 
 export async function AddFollowing(actorId: string, followingId: string, inboxUri: string) {
@@ -21,7 +25,11 @@ export async function AddFollowing(actorId: string, followingId: string, inboxUr
         followeeId: followingId,
         inboxUri: inboxUri
     }
+    if(await followingCollection.findOne(followingToInsert)){
+        return false;
+    }
     followingCollection.insertOne(followingToInsert);
+    return true;
 }
 
 export async function getInternalUsersFollowersByUserId(actorId: string, options: { cursor: string, limit: 10 }) {
@@ -38,7 +46,7 @@ export async function getInternalUsersFollowersByUserId(actorId: string, options
         users,
         nextCursor: users[users.length - 1]?._id.toHexString(),
         last: users[users.length - 1]?._id === lastFollower?._id,
-        totalItems : followersCollection.countDocuments()
+        totalItems : await followersCollection.countDocuments()
     }
 }
 

@@ -24,7 +24,7 @@ UserRouter.get('/platform/users/:userHandle', async (req, res) => {
         if (user == null) return res.status(404).json({ error: 'No user found for provided username.' })
         return res.json(user);
     } catch {
-        return res.status(500).json({ error: "An internal error occurred while getting retrieving the user." })
+        return res.status(500).json({ error: "An internal error occurred while retrieving the user." })
     }
 });
 
@@ -82,9 +82,12 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res) => 
         const recipient = await LookupUser(req.params.followHandle, req);
         if(!recipient || !recipient.id || !recipient.inboxId) return res.status(400).json("Cannot follow someone who doesn't exist moron");
         if(await isLocalUser(req, req.params.followHandle)){
-            await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href )
-            await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href)
-            return res.status(202);
+            if(!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href ))){
+                return res.status(409)
+            }
+            if(!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))){
+                return res.status(409)
+            }
         }
         await sendFollow(ctx, user.actorId, recipient);
         return res.status(202);

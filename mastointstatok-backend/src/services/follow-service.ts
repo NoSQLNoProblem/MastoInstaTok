@@ -2,10 +2,10 @@ import { Link, type Actor, type OrderedCollection, type OrderedCollectionPage } 
 import { createContext } from "../federation.js";
 import { type Request } from "express";
 import type { User } from "../types.js";
-import { isLocalUser } from "./user-service.js";
+import { isLocalUser, LookupUser } from "./user-service.js";
 import { getInternalUsersFollowersByUserId } from "../database/follow-queries.js";
-import { ObjectId } from "mongodb";
 import { getMaxObjectId } from "../lib/mongo.js";
+import { FindUserByUri } from "../database/user-queries.js";
 
 export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null,  next?: string) {
     const ctx = createContext(request);
@@ -24,7 +24,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         const followersCollection = await getInternalUsersFollowersByUserId(actor.id.href, {cursor: cursor, limit: 10})
         const baseUri = getBaseUri(request);
         return {
-            items : followersCollection.users,
+            items : await Promise.all(followersCollection.users.map(async (follower) => (await FindUserByUri(follower.actorId)))),
             next: `${baseUri}${cursor ? `?next=${followersCollection.nextCursor ?? ''}` : ''}`,
             totalItems: followersCollection.totalItems
         }
