@@ -4,7 +4,7 @@ import { type User } from '../types.js';
 import { createContext } from '../federation.js';
 import { type Request } from 'express';
 import {  Person} from '@fedify/fedify';
-import { AddUser } from '../database/user-queries.js';
+import { AddUser, FindUserByUri } from '../database/user-queries.js';
 import * as crypto from 'crypto';
 
 client.connect();
