@@ -1,10 +1,9 @@
 import type { Profile } from 'passport';
 import  client  from '../lib/mongo.js';
 import { type Follower, type User } from '../types.js';
-import { ObjectId, type WithId } from 'mongodb';
 import { createContext } from '../federation.js';
 import { type Request } from 'express';
-import { Link, OrderedCollection, OrderedCollectionPage, Person, type Actor } from '@fedify/fedify';
+import {  Person} from '@fedify/fedify';
 import { AddUser } from '../database/user-queries.js';
 import * as crypto from 'crypto';
 
@@ -46,7 +45,9 @@ export async function FindUserByUserHandle(userHandle: string, request: Request)
   }
   return user;
 }
-
-
-
+export async function LookupUser(userHandle: string, request : Request) {
+  const ctx = createContext(request);
+  const actor = await ctx.lookupObject(userHandle) as Person;
+  return actor;
+}
 const getActorId = (username: string, baseUrl: string) => `${baseUrl}/api/users/${username}`

@@ -1,8 +1,8 @@
 import passport, { type Profile } from 'passport';
 import express from 'express';
-import { FindUserByUserHandle } from '../services/user-service.js';
+import { FindUserByUserHandle, LookupUser } from '../services/user-service.js';
 import { FindUser, UpdateUser } from '../database/user-queries.js';
-import { GetFollowers } from '../services/follow-service.js';
+import { GetOrderedCollectionPage } from '../services/follow-service.js';
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res) => {
@@ -48,14 +48,25 @@ UserRouter.get('/platform/users/:user/followers', async (req, res) => {
         if (!RegExp("@.+@.+").test(req.params.user)) {
             return res.status(400).json({ error: "Invalid user handle provided" })
         }
-        return res.json(await GetFollowers(req, req.params.user as `@${string}@${string}`, req.query.next as string | undefined) ?? []);
+        const user = await  LookupUser(req.params.user, req)
+        if(!user || !user.followersId) return res.status(404);
+        return res.json(await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []);
     }catch{
         return res.status(500);
     }
 })
 
 UserRouter.get('/platform/users/:user/following', async (req, res) => {
-
+    try{
+        if (!RegExp("@.+@.+").test(req.params.user)) {
+            return res.status(400).json({ error: "Invalid user handle provided" })
+        }
+        const user = await  LookupUser(req.params.user, req)
+        if(!user || !user.followingId) return res.status(404);
+        return res.json(await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined) ?? []);
+    }catch{
+        return res.status(500);
+    }
 })
 
 UserRouter.post('/platform/users/:user/following', async (req, res) => {
