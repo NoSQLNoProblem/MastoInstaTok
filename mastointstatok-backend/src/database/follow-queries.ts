@@ -37,10 +37,10 @@ export async function getInternalUsersFollowersByUserId(actorId: string, options
     return {
         users,
         nextCursor: users[users.length - 1]?._id.toHexString(),
-        last: users[users.length - 1]?._id === lastFollower?._id
+        last: users[users.length - 1]?._id === lastFollower?._id,
+        totalItems : followersCollection.countDocuments()
     }
 }
-
 
 export async function getInternalUsersFollowingByUserId(actorId: string, options: { cursor: string, limit: 10 }) {
     const { cursor, limit } = options

@@ -9,11 +9,11 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import type { AcceptObject, Follower, User } from "./types.js";
+import type { AcceptObject, Follower, FollowObject, User } from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
 import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
-import { getAcceptRecord, insertAcceptRecord } from "./database/object-queries.js";
+import { getAcceptRecord, getFollowRecord, insertAcceptRecord, insertFollowRecord } from "./database/object-queries.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -123,6 +123,8 @@ federation
     const follower = await follow.getActor(ctx);
     if (follower == null) return;
     const resourceGUID = crypto.randomUUID().split("-")[0]
+    console.log("the sending identifier for a accept is")
+    console.log(parsed.identifier)
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
@@ -158,37 +160,57 @@ federation.setObjectDispatcher(
   }
 );
 
-// federation.setObjectDispatcher(Follow, 
-//   "/users/{userId}/accept/{acceptid}",
-//   async (ctx, { userId, noteId }) => {
-//     if (note == null) return null;  // Return null if the note is not found.
-//     return new Note({
-//       id: ctx.getObjectUri(Note, { userId, noteId }),
-//       content: note.content,
-//       // Many more properties...
-//     });
-//   }
-// )
+federation.setObjectDispatcher(Follow, 
+  "/users/{userId}/follows/{followId}",
+  async (ctx, { userId, followId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${followId}`);
+    const followObject : FollowObject | null = await getFollowRecord(id); 
+    if(!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
+    return new Follow({
+      id: new URL(followObject?.id),
+      actor: new URL(followObject?.actor),
+      object: new URL(followObject?.object)
+    });
+  }
+)
 
 export function createContext(request:Request){
   const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
   return federation.createContext(new URL(url), undefined);
 }
 
-// export async function sendFollow(
-//   ctx: Context<void>,
-//   senderId: string,
-//   recipient: Recipient,
-// ) {
-//   await ctx.sendActivity(
-//     { identifier: senderId },
-//     recipient,
-//     new Follow({
-//       id: new URL(`${ctx.canonicalOrigin}/${senderId}/follows/${recipient.id}`),
-//       actor: ctx.getActorUri(senderId),
-//       object: recipient.id,
-//     }),
-//   );
-// }
+export async function sendFollow(
+  ctx: Context<unknown>,
+  senderId: string,
+  recipient: Recipient,
+) {
+  const resourceGUID = crypto.randomUUID().split("-")[0]
+  if(!recipient || !recipient.id) return false;
+
+  const sender = ctx.parseUri(new URL(senderId));
+  if(sender?.type !== "actor"){
+    return false;
+  }
+  await ctx.sendActivity(
+    { identifier: sender.identifier},
+    recipient,
+    new Follow({
+      id: new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/follows/${resourceGUID}`),
+      actor: ctx.getActorUri(sender.identifier),
+      object: recipient.id,
+    }),
+  );
+  console.log("getting here")
+  // this should only happen after the accept has been handled by our inbox listener
+  console.log("The actor is",  ctx.getActorUri(sender.identifier));
+  console.log("the object is", recipient.id );
+  insertFollowRecord({
+    id: `${ctx.canonicalOrigin}/users/${senderId}/follows/${resourceGUID}`,
+    actor: ctx.getActorUri(sender.identifier).href,
+    object: recipient.id.href, 
+  })
+
+  return true;
+}
 
 export default federation;

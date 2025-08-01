@@ -2,10 +2,33 @@ import { Link, type Actor, type OrderedCollection, type OrderedCollectionPage } 
 import { createContext } from "../federation.js";
 import { type Request } from "express";
 import type { User } from "../types.js";
+import { isLocalUser } from "./user-service.js";
+import { getInternalUsersFollowersByUserId } from "../database/follow-queries.js";
+import { ObjectId } from "mongodb";
+import { getMaxObjectId } from "../lib/mongo.js";
 
-export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null, next?: string) {
+export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null,  next?: string) {
     const ctx = createContext(request);
     let collectionPage;
+    const handle = request.params.user;
+    if(await isLocalUser(request, handle )){
+        let cursor : string;
+        if(!next){
+            cursor = getMaxObjectId().toHexString();
+        }
+        else{
+            const splitNext = next.split("next=");
+            cursor = splitNext[splitNext.length - 1];
+        }
+        if(!actor.id) return []
+        const followersCollection = await getInternalUsersFollowersByUserId(actor.id.href, {cursor: cursor, limit: 10})
+        const baseUri = getBaseUri(request);
+        return {
+            items : followersCollection.users,
+            next: `${baseUri}${cursor ? `?next=${followersCollection.nextCursor ?? ''}` : ''}`,
+            totalItems: followersCollection.totalItems
+        }
+    }
 
     if (!next) {
         if (!resourceId) return []
@@ -56,3 +79,5 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         }
     }
 }
+
+const getBaseUri = (request : Request) =>`${request.protocol}://${request.get('host')}${request.originalUrl}`.split("?")[0]

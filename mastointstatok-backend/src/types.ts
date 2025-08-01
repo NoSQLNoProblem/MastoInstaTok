@@ -30,5 +30,7 @@ export type AcceptObject = {
 }
 
 export type FollowObject = {
-
+  id: string,
+  actor: string,
+  object : string
 }
