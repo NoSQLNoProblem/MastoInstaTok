@@ -15,6 +15,7 @@
   width: 100%;
   max-width: 28rem; 
   text-align: center;
+  position: relative;
 }
 
 .title {
@@ -22,6 +23,7 @@
   font-weight: 300;
   color: #333;
   margin-bottom: 1.5rem;
+  margin-top: 1rem;
 }
 
 .form {
@@ -45,6 +47,7 @@
   font-size: 1rem; 
   background: #fafafa;
   width: 100%;
+  resize: none;
 }
 
 .input:focus {
@@ -56,7 +59,7 @@
 .buttonContainer {
   width: 100%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .submitButton {
@@ -98,11 +101,44 @@
   padding-left: 1.25rem; 
 }
 
+.textCount {
+  font-size: 0.875rem; 
+}
+
+.subheading {
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+  color:#666;
+}
+
 .errorText {
   color: #d9534f;
   font-size: 0.875rem; 
   margin-top: 0.25rem; 
   min-height: 1.25rem; 
+}
+
+.rulesList {
+  list-style-position: inside;
+}
+
+.logoutButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.logoutButton:hover {
+  background: #f0f0f0;
+  color: #333;
 }
 
 @media (max-width: 480px) {

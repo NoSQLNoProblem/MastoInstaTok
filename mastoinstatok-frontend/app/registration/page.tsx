@@ -4,18 +4,26 @@ import type React from "react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import styles from "./registration.module.css";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiService } from "@/services/apiService";
 
 export default function RegistrationPage() {
-  const [username, setUsername] = useState<string>("");
+  const [displayName, setDisplayName] = useState<string>("");
+  const [biography, setBiography] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const router = useRouter();
+  const { refreshUser, logout } = useAuth();
 
-  const usernameRegex = /^(?=.{1,30}$)[a-zA-Z](?:[a-zA-Z0-9_]*[a-zA-Z0-9])?$/;
+  const displayNameRegex = /^(?=.{1,30}$)[a-zA-Z](?:[a-zA-Z0-9_]*[a-zA-Z0-9])?$/;
 
-  const validateUsername = (name: string) => {
-    if (!usernameRegex.test(name)) {
-      setError("Please enter a valid username.");
+  const validateDisplayNameAndBiography = (name: string, biography: string) => {
+    if (!displayNameRegex.test(name)) {
+      setError("Please enter a valid display name.");
+      return false;
+    }
+    else if (biography.length > 255) {
+      setError("The biography is too long. Please shorten it to 255 characters or less.");
       return false;
     }
     setError("");
@@ -23,16 +31,12 @@ export default function RegistrationPage() {
   };
 
   useEffect(() => {
-    if (username) {
-      validateUsername(username);
-    } else {
-      setError("");
-    }
-  }, [username]);
+    validateDisplayNameAndBiography(displayName, biography);
+  }, [displayName, biography]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!validateUsername(username)) {
+    if (!validateDisplayNameAndBiography(displayName, biography)) {
       return;
     }
 
@@ -40,25 +44,20 @@ export default function RegistrationPage() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username }),
+      await apiService.post("/platform/users/me", {
+        displayName: displayName,
+        bio: biography,
       });
+      await refreshUser();
+      router.push("/feed");
 
-      if (response.ok) {
-        router.push("/feed");
-      } else if (response.status === 409) {
-        const data = await response.json();
-        setError(data.message || "This username is already taken.");
-      } else {
-        throw new Error("An unexpected error has occurred.");
-      }
     } catch (error) {
-      console.error("Error setting username:", error);
-      setError("Failed to connect to the server. Please try again later.");
+      console.error("Error setting display name:", error);
+      if (error instanceof Error && error.message.includes("409")) {
+        setError("This username is already taken.");
+      } else {
+        setError("Failed to connect to the server. Please try again later.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -67,26 +66,46 @@ export default function RegistrationPage() {
   return (
     <div className={styles.container}>
       <div className={styles.registrationCard}>
-        <h1 className={styles.title}>Choose Your Username</h1>
-        <p className="text-muted-foreground mb-6">
+        <button onClick={logout} className={styles.logoutButton} aria-label="Logout">
+          Logout🚪
+        </button>
+
+        <h1 className={styles.title}>Choose Your Display Name</h1>
+        <p className={styles.subheading}>
           This will be your unique handle across the platform.
         </p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.inputGroup}>
-            <label htmlFor="username" className="font-medium">
-              Username
+            <label htmlFor="displayName" className="font-medium">
+              Display name
             </label>
             <input
               type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g., social_user"
               className={styles.input}
               required
               aria-describedby="error-message"
             />
+            <p className= {styles.textCount}>Character count: {displayName.length}</p>
+            <label htmlFor="biography" className="font-medium">
+              Biography
+            </label>
+            <textarea
+              id="biography"
+              value={biography}
+              onChange={(e) => setBiography(e.target.value)}
+              placeholder="e.g., Hi, my name is ...!"
+              className={styles.input}
+              required
+              rows={3}
+              maxLength={255}
+              aria-describedby="error-message"
+            />
+            <p className= {styles.textCount}>Character count: {biography.length}</p>
             {error && (
               <p id="error-message" className={styles.errorText}>
                 {error}
@@ -98,16 +117,16 @@ export default function RegistrationPage() {
             <button
               type="submit"
               className={styles.submitButton}
-              disabled={isSubmitting || !!error || !username}
+              disabled={isSubmitting || !!error || !displayName}
             >
-              {isSubmitting ? "Registering..." : "Register"}
+              {isSubmitting ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
 
         <div className={styles.rulesContainer}>
-          <h2 className={styles.rulesTitle}>Rules for usernames:</h2>
-          <ul>
+          <h2 className={styles.rulesTitle}>Rules for display names:</h2>
+          <ul className={styles.rulesList}>
             <li className={styles.ruleText}>
               Must be between 1 and 30 characters long.
             </li>
