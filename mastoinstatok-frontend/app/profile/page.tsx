@@ -31,10 +31,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [selectedPost, setSelectedPost] = useState<UserPost | null>(null)
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
 
   // Check authentication and get username
   useEffect(() => {
+    console.log(isAuthenticated);
+    if (isLoading) return // Wait for loading to finish
     if (!isAuthenticated) {
       router.push("/auth")
       return
@@ -42,9 +44,9 @@ export default function ProfilePage() {
 
     // Generate mock profile data
     const profile: UserProfile = {
-      username: user?.displayName,
+      username: user?.displayName || "",
       fullHandle: `@${user?.email}`,
-      bio: user?.bio,
+      bio: user?.bio || "",
       posts: 24,
       followers: 1250,
       following: 180,
@@ -66,7 +68,7 @@ export default function ProfilePage() {
     setProfile(profile)
     setPosts(mockPosts.sort((a, b) => b.timestamp - a.timestamp))
     setLoading(false)
-  }, [])
+  }, [isAuthenticated, isLoading, user, router])
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
