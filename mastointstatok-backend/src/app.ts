@@ -9,6 +9,7 @@ import session from 'express-session';
 import 'dotenv/config'
 import { CreateUser } from "./services/user-service.js";
 import { UserRouter } from "./routes/user-routes.js";
+import cors from "cors";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -33,6 +34,13 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+  app.use(
+    cors({
+      origin: 'http://localhost:3000',
+      credentials: true,
+    }),
+  );
 
 app.use(integrateFederation(federation, (req) =>  req.user));
 app.use(express.json())

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Navigation from "@/components/Navigation"
 import styles from "./profile.module.css"
+import React from "react"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface UserPost {
   id: string
@@ -15,7 +17,7 @@ interface UserPost {
 
 interface UserProfile {
   username: string
-  fullName: string
+  fullHandle: string
   bio: string
   posts: number
   followers: number
@@ -29,28 +31,24 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [selectedPost, setSelectedPost] = useState<UserPost | null>(null)
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
 
   // Check authentication and get username
   useEffect(() => {
-    const authToken = document.cookie.includes("auth-token=authenticated")
-    if (!authToken) {
+    if (!isAuthenticated) {
       router.push("/auth")
       return
     }
 
-    // Get username from cookie
-    const usernameCookie = document.cookie.split("; ").find((row) => row.startsWith("username="))
-    const username = usernameCookie ? usernameCookie.split("=")[1] : "user"
-
     // Generate mock profile data
-    const mockProfile: UserProfile = {
-      username: username,
-      fullName: `${username.charAt(0).toUpperCase() + username.slice(1)} Smith`,
-      bio: "📸 Photography enthusiast | 🌍 Travel lover | ✨ Living life to the fullest",
+    const profile: UserProfile = {
+      username: user?.displayName,
+      fullHandle: `@${user?.email}`,
+      bio: user?.bio,
       posts: 24,
       followers: 1250,
       following: 180,
-      avatar: `/placeholder.svg?height=150&width=150&query=user avatar ${username}`,
+      avatar: `/placeholder.svg?height=150&width=150&query=user`,
     }
 
     // Generate mock posts
@@ -65,10 +63,10 @@ export default function ProfilePage() {
       })
     }
 
-    setProfile(mockProfile)
+    setProfile(profile)
     setPosts(mockPosts.sort((a, b) => b.timestamp - a.timestamp))
     setLoading(false)
-  }, [router])
+  }, [])
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -141,7 +139,7 @@ export default function ProfilePage() {
               </div>
 
               <div className={styles.bio}>
-                <p className={styles.fullName}>{profile.fullName}</p>
+                <p className={styles.fullHandle}>{profile.fullHandle}</p>
                 <p className={styles.bioText}>{profile.bio}</p>
               </div>
             </div>

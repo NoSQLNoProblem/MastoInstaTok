@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, use, useEffect, useContext } from "react"
 import { useRouter } from "next/navigation"
 import Navigation from "@/components/Navigation"
 import styles from "./create.module.css"
@@ -15,6 +15,7 @@ export default function CreatePage() {
   const router = useRouter()
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
