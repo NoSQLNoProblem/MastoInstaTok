@@ -1,25 +1,48 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import styles from "./Post.module.css"
+import { PostProps } from "@/types/post"
 
 // 1. Updated interface to match the backend response
-interface PostProps {
-  post: {
-    id: string
-    username: string
-    imageURL: string
-    caption: string
-    likes: number
-    isLiked: boolean
-    timestamp: string 
-    avatar?: string
-  }
-  onLike: (postId: string) => void
-}
 
 export default function Post({ post, onLike }: PostProps) {
-  const [imageLoaded, setImageLoaded] = useState(false)
+  const [mediaLoaded, setMediaLoaded] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null); // <-- Create a ref for the video element
+
+  useEffect(() => {
+    //
+    // Set up the Intersection Observer to pause the video when it's not visible
+    //
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Video is in view, play it
+          videoRef.current!.currentTime = 0;
+          videoRef.current?.play();
+        } else {
+          // Video is out of view, pause it
+          videoRef.current?.pause();
+        }
+      },
+      {
+        // Trigger the callback when 50% of the video is visible
+        threshold: 0.9,
+      }
+    );
+
+    const currentVideo = videoRef.current;
+    if (currentVideo) {
+      observer.observe(currentVideo);
+    }
+
+    // Cleanup function to disconnect the observer when the component unmounts
+    return () => {
+      if (currentVideo) {
+        observer.unobserve(currentVideo);
+      }
+    };
+  }, []);
 
   const formatTimeAgo = (timestamp: string) => {
     const now = Date.now()
@@ -41,6 +64,32 @@ export default function Post({ post, onLike }: PostProps) {
     }
   }
 
+  const renderMedia = () => {
+    if (post.mediaType === 'video') {
+      return (
+        <video
+          ref={videoRef}
+          src={post.mediaURL}
+          className={`${styles.postMedia} ${mediaLoaded ? styles.loaded : ""}`}
+          onLoadedData={() => setMediaLoaded(true)}
+          controls 
+          playsInline 
+          loop
+          muted 
+        />
+      );
+    }
+
+    return (
+      <img
+        src={post.mediaURL || "/placeholder.jpg"}
+        alt="Post content"
+        className={`${styles.postMedia} ${mediaLoaded ? styles.loaded : ""}`}
+        onLoad={() => setMediaLoaded(true)}
+      />
+    );
+  };
+
   return (
     <article className={styles.post}>
       <header className={styles.header}>
@@ -54,23 +103,19 @@ export default function Post({ post, onLike }: PostProps) {
           </div>
           <div className={styles.userDetails}>
             <h3 className={styles.username}>{post.username}</h3>
+            <h3 className={styles.userHandle}>{post.userHandle}</h3>
             <span className={styles.timestamp}>{formatTimeAgo(post.timestamp)}</span>
           </div>
         </div>
       </header>
 
-      <div className={styles.imageContainer}>
-        {!imageLoaded && (
-          <div className={styles.imagePlaceholder}>
+      <div className={styles.mediaContainer}>
+        {!mediaLoaded && (
+          <div className={styles.mediaPlaceholder}>
             <div className={styles.spinner}></div>
           </div>
         )}
-        <img
-          src={post.imageURL || "/placeholder.jpg"}
-          alt="Post content"
-          className={`${styles.postImage} ${imageLoaded ? styles.loaded : ""}`}
-          onLoad={() => setImageLoaded(true)}
-        />
+        {renderMedia()}
       </div>
 
       <div className={styles.actions}>

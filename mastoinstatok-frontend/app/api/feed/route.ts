@@ -1,23 +1,36 @@
+import { PostData } from "@/types/post"; // Note: I've updated this to use the 'Post' type we defined
 import { NextResponse } from 'next/server';
 
 
 const NUMBER_OF_POSTS = 21;
+
 // Mock data generator for posts
 const generateMockPosts = (startIndex: number, pageSize: number) => {
-    const posts = [];
+    const posts : PostData[] = [];
     const now = new Date();
 
     for (let i = 0; i < pageSize; i++) {
         const id = startIndex + i;
+
+        // Randomly decide if the media is a video or an image
+        const isVideo = Math.random() > 0.7; // ~30% chance of being a video
+        const mediaType = isVideo ? 'video' : 'image';
+        const mediaURL = isVideo
+          // Using a common, reliable placeholder video for the mock
+          ? 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+          : `https://picsum.photos/seed/${id}/600/400`;
+
         posts.push({
             id: id.toString(),
             timestamp: new Date(now.getTime() - i * 3600000).toISOString(),
-            imageURL: `https://picsum.photos/seed/${id}/600/400`, // Using a real image placeholder service
-            caption: `This is a mock post with ID ${id}. #mockdata #awesome`,
+            mediaURL: mediaURL,
+            mediaType: mediaType,
+            caption: `This is a mock ${mediaType} post with ID ${id}. #mockdata #awesome`,
             username: `user${id % 10}`,
-            avatar: `https://i.pravatar.cc/40?u=user${id % 10}`, // Using a real avatar placeholder
+            avatar: `https://i.pravatar.cc/40?u=user${id % 10}`,
             likes: Math.floor(Math.random() * 200),
             isLiked: Math.random() > 0.5,
+            userHandle: `@user${id % 10}@somewebsite.com`
         });
     }
     return posts;
