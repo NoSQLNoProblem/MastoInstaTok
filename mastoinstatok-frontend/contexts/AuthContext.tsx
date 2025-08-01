@@ -1,21 +1,26 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { apiService } from '@/services/apiService';
 
 // This interface should match the user object your backend sends from /api/auth/me
-interface User {
-  displayName: string;
-  email: string;
-  googleId: string;
-}
+export type User = {
+    googleId ?: string,
+    email ?: string,
+    displayName?: string,
+    actorId: string,
+    bio ?: string,
+    fullHandle ?: string
+  };
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   logout: () => void;
-  isLoading: boolean; // Flag to prevent rendering pages before auth status is known
+  isLoading: boolean;
+  registrationRequired: boolean;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,34 +28,49 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [registrationRequired, setRegistrationRequired] = useState<boolean>(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   const checkAuthStatus = useCallback(async () => {
     try {
-      // Will return user data if they have a valid session
-      const userData = await apiService.get('/auth/me');
+      const userData = await apiService.get('/platform/users/me');
+      if (userData.displayName == null || userData.bio == null) {
+        setRegistrationRequired(true);
+      } else {
+        setRegistrationRequired(false);
+      }
       setUser(userData);
     } catch (error) {
-      // If the request fails (e.g., 401), the user is not logged in
       setUser(null);
+      setRegistrationRequired(false);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
+  useEffect(() => {
+    if (!isLoading) {
+      const isAuthenticated = !!user;
+      if (isAuthenticated && registrationRequired && pathname !== '/registration') {
+        router.push('/registration');
+      }
+    }
+  }, [isLoading, user, registrationRequired, router, pathname]);
+
   const logout = async () => {
     try {
-      // This endpoint should tell the backend to destroy the session
       await apiService.post('/auth/logout');
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-      // Clear user state and redirect regardless of backend call success
       setUser(null);
+      setRegistrationRequired(false);
       router.push('/auth');
     }
   };
@@ -60,6 +80,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     logout,
     isLoading,
+    registrationRequired,
+    refreshUser: checkAuthStatus
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
