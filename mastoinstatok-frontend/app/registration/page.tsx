@@ -12,6 +12,7 @@ export default function RegistrationPage() {
   const [biography, setBiography] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const router = useRouter();
   const { refreshUser, logout } = useAuth();
 
@@ -22,7 +23,7 @@ export default function RegistrationPage() {
       setError("Please enter a valid display name.");
       return false;
     }
-    else if (biography.length > 255) {
+    else if (biography.length > 255 || biography.length <=0) {
       setError("The biography is too long. Please shorten it to 255 characters or less.");
       return false;
     }
@@ -48,13 +49,16 @@ export default function RegistrationPage() {
         displayName: displayName,
         bio: biography,
       });
+      setIsSuccess(true);
       await refreshUser();
-      router.push("/feed");
+      setTimeout(() => {
+        router.push("/feed");
+      }, 1500);
 
     } catch (error) {
       console.error("Error setting display name:", error);
-      if (error instanceof Error && error.message.includes("409")) {
-        setError("This username is already taken.");
+      if (error instanceof Error && error.message.includes("400")) {
+        setError("This username is already taken OR the required fields are missing!");
       } else {
         setError("Failed to connect to the server. Please try again later.");
       }
@@ -113,11 +117,13 @@ export default function RegistrationPage() {
             )}
           </div>
 
+            {isSuccess && <p className={styles.successText}>Profile updated successfully!</p>}
+            
           <div className={styles.buttonContainer}>
             <button
               type="submit"
               className={styles.submitButton}
-              disabled={isSubmitting || !!error || !displayName}
+              disabled={isSubmitting || !displayName || !biography || isSuccess}
             >
               {isSubmitting ? "Saving..." : "Save"}
             </button>
