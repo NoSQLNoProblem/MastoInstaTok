@@ -35,7 +35,6 @@ export default function ProfilePage() {
 
   // Check authentication and get username
   useEffect(() => {
-    console.log(isAuthenticated);
     if (isLoading) return // Wait for loading to finish
     if (!isAuthenticated) {
       router.push("/auth")
