@@ -6,6 +6,7 @@ import { createContext } from '../federation.js';
 import { type Request } from 'express';
 import { Link, OrderedCollection, OrderedCollectionPage, Person, type Actor } from '@fedify/fedify';
 import { AddUser } from '../database/user-queries.js';
+import * as crypto from 'crypto';
 
 client.connect();
 const db = client.db("app_db");
