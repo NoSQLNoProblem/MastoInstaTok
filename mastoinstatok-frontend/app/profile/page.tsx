@@ -4,24 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Navigation from "@/components/Navigation"
 import styles from "./profile.module.css"
-
-interface UserPost {
-  id: string
-  image: string
-  caption: string
-  likes: number
-  timestamp: number
-}
-
-interface UserProfile {
-  username: string
-  fullName: string
-  bio: string
-  posts: number
-  followers: number
-  following: number
-  avatar: string
-}
+import { UserPost, UserProfile } from "@/types/profile"
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
