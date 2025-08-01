@@ -1,3 +1,5 @@
 
 import { Db, MongoClient} from 'mongodb'
-export const client = new MongoClient('mongodb://localhost:27017')
+const client = new MongoClient('mongodb://localhost:27017')
+client.connect()
+export default client
