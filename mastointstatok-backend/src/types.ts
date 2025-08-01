@@ -1,27 +1,14 @@
 export type User = {
-  _id: string ,
-  googleId: string,
-  email: string,
-  displayName: string,
-  actorId: string
-}
-
-export type UserDocument = {
-    googleId: string,
-    email: string | undefined
+    googleId ?: string,
+    email ?: string | undefined
     displayName: string | null,
     actorId: string,
     bio : string | null,
-    followers: Actor[],
-    username: string
+    username ?: string
+    fullHandle : string
   };
 
-export type Actor = {
-  uri : string,
-  inboxUri : string
-}
-
-export type FollowerDocument = {
+export type Follower = {
   uri : string,
   inboxUri : string,
   actorId : string
