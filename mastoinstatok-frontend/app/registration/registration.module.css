@@ -141,6 +141,13 @@
   color: #333;
 }
 
+.successText {
+  color: white;
+  font-size: 1rem;
+  background-color: green;
+  padding: 1rem;
+}
+
 @media (max-width: 480px) {
   .registrationCard {
     padding: 1.875rem 1.25rem; 
