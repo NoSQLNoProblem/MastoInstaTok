@@ -1,4 +1,4 @@
-import { Link, type Actor, type OrderedCollection, type OrderedCollectionPage } from "@fedify/fedify";
+import { Link, Person, type Actor, type OrderedCollection, type OrderedCollectionPage } from "@fedify/fedify";
 import { createContext } from "../federation.js";
 import { type Request } from "express";
 import type { User } from "../types.js";
@@ -24,7 +24,16 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         const followersCollection = await getInternalUsersFollowersByUserId(actor.id.href, {cursor: cursor, limit: 10})
         const baseUri = getBaseUri(request);
         return {
-            items : await Promise.all(followersCollection.users.map(async (follower) => (await FindUserByUri(follower.actorId)))),
+            items : await Promise.all(followersCollection.users.map(async (follower) => {
+                const user = await LookupUser(follower.uri, request) as Person;
+                return {
+                    actorId: user.id?.href,
+                    bio: user.summary,
+                    displayName: user.name,
+                    fullHandle: `@${user.preferredUsername}@${(new URL(user!.id!.href).host)})` 
+                }
+            }
+            )),
             next: `${baseUri}${cursor ? `?next=${followersCollection.nextCursor ?? ''}` : ''}`,
             totalItems: followersCollection.totalItems
         }
