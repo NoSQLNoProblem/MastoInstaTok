@@ -41,8 +41,14 @@ export default function SearchPage() {
       console.log(following);
 
       const isFollowing = Array.isArray(following.items) && following.items.some((item: any) => {
-        return item && item.id === `https://www.bbd-grad-project.co.za/api/users/${handle}`
-      })
+          if (!item || !item.actorId) return false
+
+          const targetActorId = userData.actorId.replace(/\/$/, "")
+          const itemActorId = item.actorId.replace(/\/$/, "").replace(/\)$/, "")
+
+          return itemActorId === targetActorId
+        })
+
 
       setUser({
         ...userData,
