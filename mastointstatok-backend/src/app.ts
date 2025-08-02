@@ -10,7 +10,6 @@ import session from 'express-session';
 import 'dotenv/config'
 import { CreateUser } from "./services/user-service.js";
 import { UserRouter } from "./routes/user-routes.js";
-import cors from "cors";
 
 const logger = getLogger("mastointstatok-backend");
 
