@@ -20,7 +20,6 @@ const logger = getLogger("mastointstatok-backend");
 export const federation = createFederation({
   kv: new MongoKvStore(),
   queue: new InProcessMessageQueue(),
-  origin: "https://bbd-grad-project.co.za"
 });
 
 const kv = new MongoKvStore();
