@@ -17,7 +17,8 @@ UserRouter.get('/platform/users/:userHandle', async (req, res) => {
                 bio: user.bio,
                 displayName: user.displayName,
                 fullHandle: user.fullHandle,
-                email: user.email
+                email: user.email,
+                avatarURL: user.avatarURL
             });
         }
         const user = await FindUserByUserHandle(req.params.userHandle, req);

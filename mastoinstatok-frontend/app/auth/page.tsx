@@ -18,7 +18,8 @@ export default function AuthPage() {
   }, [isAuthenticated, isLoading, router]);
 
   const handleGoogleAuth = () => {
-    window.location.href = 'https://bbd-grad-project.co.za/api/auth/google';
+    // window.location.href = 'https://bbd-grad-project.co.za/api/auth/google';
+    window.location.href = 'http://localhost:5000/api/auth/google';
   };
 
   if (isLoading) {

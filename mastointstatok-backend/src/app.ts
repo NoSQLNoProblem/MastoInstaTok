@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { integrateFederation } from "@fedify/express";
 import { getLogger } from "@logtape/logtape";
 import federation from "./federation.js";
@@ -13,6 +14,11 @@ import { UserRouter } from "./routes/user-routes.js";
 const logger = getLogger("mastointstatok-backend");
 
 export const app = express();
+
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
 
 app.set("trust proxy", true);
 

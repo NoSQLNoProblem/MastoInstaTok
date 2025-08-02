@@ -13,18 +13,18 @@ const PAGE_SIZE = 5;
 export async function fetchPostsApi(offset: number) {
    // THIS IS FOR TESTING VIA MOCKS
         //==========================================
-        // const response = await fetch(
-        //   `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
-        //   {
-        //     credentials: "include",
-        //   }
-        // );
-        // const data = await response.json();
+        const response = await fetch(
+          `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
+          {
+            credentials: "include",
+          }
+        );
+        const data = await response.json();
         //===========================================
 
-        const data = await apiService.get(
-          `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
-        );
+        // const data = await apiService.get(
+        //   `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+        // );
 
   return { items: data.posts, nextOffset: data.nextOffset };
 }

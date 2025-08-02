@@ -9,7 +9,7 @@ AuthRouter.get('/auth/google',
 
 AuthRouter.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => res.redirect('/auth/callback')
+  (req, res) => res.redirect('http://localhost:3000/auth/callback')
 );
 
 AuthRouter.post('/auth/logout', (req, res, next) => {

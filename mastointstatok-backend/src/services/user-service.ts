@@ -17,14 +17,18 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
 
   const username = `${profile.displayName.toLowerCase().replace(/\s+/g, '')}-${crypto.randomUUID().split("-")[0]}`;
   const actorId = getActorId(username, baseUrl);
-  const userToInsert = {
+
+  const avatarURL = (profile.photos && profile.photos.length > 0) ? profile.photos[0].value : undefined;
+
+  const userToInsert : User = {
     googleId: profile.id,
     email: profile.emails?.[0]?.value,
     displayName: null,
     bio: null,
     actorId: actorId,
     username,
-    fullHandle: `@${username}@${baseUrl.split("//")[1]}`
+    fullHandle: `@${username}@${baseUrl.split("//")[1]}`,
+    avatarURL: avatarURL
   };
 
   return await AddUser(userToInsert)

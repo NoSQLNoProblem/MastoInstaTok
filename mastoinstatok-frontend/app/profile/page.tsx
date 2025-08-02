@@ -15,18 +15,18 @@ const PAGE_SIZE = 6; // Number of posts to show per page
 async function fetchPostsApi(offset: number) {
   // THIS IS FOR TESTING VIA MOCKS
   //==========================================
-//   const response = await fetch(
-//     `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
-//     {
-//       credentials: "include",
-//     }
-//   );
-//   const data = await response.json();
+  const response = await fetch(
+    `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
+    {
+      credentials: "include",
+    }
+  );
+  const data = await response.json();
   //===========================================
 
-  const data = await apiService.get(
-    `/me?startIndex=${offset}&pageSize=${PAGE_SIZE}`
-  );
+  // const data = await apiService.get(
+  //   `/me?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+  // );
 
   return { items: data.posts, nextOffset: data.nextOffset };
 }
@@ -63,7 +63,7 @@ export default function ProfilePage() {
       posts: 24,
       followers: 1250,
       following: 180,
-      avatar: `/placeholder.svg?height=150&width=150&query=user`,
+      avatar: user?.avatarURL || "/placeholder-user.jpg",
       fullName: user?.displayName || "",
     };
     setProfile(profile);
