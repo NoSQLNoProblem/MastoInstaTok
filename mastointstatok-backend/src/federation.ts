@@ -20,6 +20,7 @@ const logger = getLogger("mastointstatok-backend");
 export const federation = createFederation({
   kv: new MongoKvStore(),
   queue: new InProcessMessageQueue(),
+  origin: "https://bbd-grad-project.co.za"
 });
 
 const kv = new MongoKvStore();
@@ -176,11 +177,12 @@ federation.setObjectDispatcher(Follow,
   }
 )
 
-export function createContext(request:Request){
-  const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
-  console.log("CONEXT URL: " + url);
-  return federation.createContext(new URL(url), undefined);
-}
+// export function createContext(request:Request){
+//   // const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
+//   // console.log("CONEXT URL: " + url);
+//   // return federation.createContext(new URL(url), undefined);
+//   return federation.createContext(request,undefined);
+// }
 
 export async function sendFollow(
   ctx: Context<unknown>,
