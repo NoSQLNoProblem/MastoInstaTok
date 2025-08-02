@@ -176,6 +176,7 @@ federation.setObjectDispatcher(Follow,
 
 export function createContext(request:Request){
   const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
+  console.log("CONEXT URL: " + url);
   return federation.createContext(new URL(url), undefined);
 }
 

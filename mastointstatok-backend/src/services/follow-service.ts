@@ -23,6 +23,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         if(!actor.id) return []
         const followersCollection = await getInternalUsersFollowersByUserId(actor.id.href, {cursor: cursor, limit: 10})
         const baseUri = getBaseUri(request);
+        console.log("BASE URL: " + baseUri);
         return {
             items : await Promise.all(followersCollection.users.map(async (follower) => {
                 const user = await LookupUser(follower.uri, request);
