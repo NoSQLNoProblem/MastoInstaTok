@@ -3,7 +3,7 @@ import express from 'express';
 import { FindUserByUserHandle, isLocalUser, LookupUser } from '../services/user-service.js';
 import { FindUser, UpdateUser } from '../database/user-queries.js';
 import { GetOrderedCollectionPage } from '../services/follow-service.js';
-import { sendFollow } from '../federation.js';
+import { createContext, sendFollow } from '../federation.js';
 import { AddFollower, AddFollowing } from '../database/follow-queries.js';
 export const UserRouter = express.Router();
 
@@ -84,8 +84,7 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res) => 
         }
         const user = await FindUser(req.user as Profile)
         if(!user) return res.status(400).json({ error: "The signed in user could not be resolved." });
-        // @ts-ignore: Property 'federationContext' is dynamically added by the middleware
-        const ctx = req.federationContext; 
+        const ctx = createContext(req);
         const recipient = await LookupUser(req.params.followHandle, req);
         if(!recipient || !recipient.id || !recipient.inboxId) return res.status(400).json("Cannot follow someone who doesn't exist moron");
         if(await isLocalUser(req, req.params.followHandle)){
