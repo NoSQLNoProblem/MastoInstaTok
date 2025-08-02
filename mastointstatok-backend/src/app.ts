@@ -35,7 +35,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.get("/.well-known/webfinger", (req, res) =>{
-  console.log("hello world");
+  res.json("hello world");
 })
 
 app.use(integrateFederation(federation, (req) =>  req.user));
