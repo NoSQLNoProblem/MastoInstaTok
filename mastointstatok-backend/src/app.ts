@@ -16,6 +16,7 @@ export const app = express();
 
 app.set("trust proxy", true);
 
+app.use(integrateFederation(federation, (req) =>  req.user));
 app.use(express.json())
 
 passport.use(new GoogleStrategy({
@@ -36,8 +37,6 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 app.use(passport.initialize());
 app.use(passport.session());
 
-
-app.use(integrateFederation(federation, (req) =>  req.user));
 app.use("/api", AuthRouter);
 app.use("/api", UserRouter);
 

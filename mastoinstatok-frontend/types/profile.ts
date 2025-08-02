@@ -9,6 +9,7 @@ export interface UserPost {
 export interface UserProfile {
   username: string
   fullName: string
+  fullHandle: string
   bio: string
   posts: number
   followers: number
