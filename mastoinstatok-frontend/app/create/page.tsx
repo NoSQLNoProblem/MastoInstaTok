@@ -4,45 +4,61 @@ import type React from "react"
 
 import { useState, useRef, use, useEffect, useContext } from "react"
 import { useRouter } from "next/navigation"
+
 import Navigation from "@/components/Navigation"
 import styles from "./create.module.css"
+import { apiService } from "@/services/apiService"
+
 
 export default function CreatePage() {
-  const [image, setImage] = useState<string | null>(null)
+  const [media, setMedia] = useState<string | null>(null)
+  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null)
   const [caption, setCaption] = useState("")
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
+      const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : null;
+      if (!type) return;
+      setMediaType(type);
+      const reader = new FileReader();
       reader.onload = (e) => {
-        setImage(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
+        setMedia(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   }
 
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!image || !caption.trim()) return
+    e.preventDefault();
+    if (!media || !caption.trim()) return;
 
-    setIsUploading(true)
+    setIsUploading(true);
 
-    // Simulate upload delay
-    setTimeout(() => {
-      setIsUploading(false)
-      router.push("/feed")
-    }, 2000)
+    try {
+      await apiService.post("/posts", {
+        caption,
+        media,
+        mediaType,
+      });
+      router.push("/feed");
+    } catch (error) {
+      alert("Failed to upload post. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
   }
 
-  const removeImage = () => {
-    setImage(null)
+
+  const removeMedia = () => {
+    setMedia(null);
+    setMediaType(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = "";
     }
   }
 
@@ -56,26 +72,30 @@ export default function CreatePage() {
 
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.imageSection}>
-              {!image ? (
+              {!media ? (
                 <div className={styles.uploadArea}>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
+                    accept="image/*,video/*"
+                    onChange={handleMediaUpload}
                     className={styles.fileInput}
-                    id="image-upload"
+                    id="media-upload"
                   />
-                  <label htmlFor="image-upload" className={styles.uploadLabel}>
-                    <div className={styles.uploadIcon}>📷</div>
-                    <p>Click to upload an image</p>
-                    <p className={styles.uploadHint}>JPG, PNG, GIF up to 10MB</p>
+                  <label htmlFor="media-upload" className={styles.uploadLabel}>
+                    <div className={styles.uploadIcon}>📷🎬</div>
+                    <p>Click to upload an image or video</p>
+                    <p className={styles.uploadHint}>JPG, PNG, GIF, MP4, WEBM up to 10MB</p>
                   </label>
                 </div>
               ) : (
                 <div className={styles.imagePreview}>
-                  <img src={image || "/placeholder.svg"} alt="Preview" className={styles.previewImage} />
-                  <button type="button" onClick={removeImage} className={styles.removeButton}>
+                  {mediaType === "image" ? (
+                    <img src={media || "/placeholder.svg"} alt="Preview" className={styles.previewImage} />
+                  ) : (
+                    <video src={media} controls className={styles.previewImage} />
+                  )}
+                  <button type="button" onClick={removeMedia} className={styles.removeButton}>
                     ✕
                   </button>
                 </div>
@@ -98,7 +118,7 @@ export default function CreatePage() {
               <div className={styles.characterCount}>{caption.length}/500</div>
             </div>
 
-            <button type="submit" disabled={!image || !caption.trim() || isUploading} className={styles.submitButton}>
+            <button type="submit" disabled={!media || !caption.trim() || isUploading} className={styles.submitButton}>
               {isUploading ? "Posting..." : "Share Post"}
             </button>
           </form>
