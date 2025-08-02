@@ -6,6 +6,7 @@ import Navigation from "@/components/Navigation";
 import Post from "@/components/Post";
 import styles from "./feed.module.css";
 import { apiService } from "@/services/apiService";
+import { usePagination } from "@/hooks/usePagination";
 
 interface PostData {
   id: string;
@@ -20,25 +21,8 @@ interface PostData {
 
 const PAGE_SIZE = 5;
 
-export default function FeedPage() {
-  const [posts, setPosts] = useState<PostData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [nextOffset, setNextOffset] = useState<number>(0);
-  const router = useRouter();
-
-  const isLoadingRef = useRef(false);
-
-  const fetchPosts = useCallback(
-    async (offset: number) => {
-      if (isLoadingRef.current || offset === -1) return;
-
-      isLoadingRef.current = true;
-      setLoading(true);
-      setError(null);
-
-      try {
-        // THIS IS FOR TESTING VIA MOCKS
+async function fetchPostsApi(offset: number) {
+   // THIS IS FOR TESTING VIA MOCKS
         //==========================================
         const response = await fetch(
           `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
@@ -53,41 +37,39 @@ export default function FeedPage() {
         //   `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
         // );
 
-        setPosts((prev) =>
-          offset === 0 ? data.posts : [...prev, ...data.posts]
-        );
-        setNextOffset(data.nextOffset);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred."
-        );
-        setNextOffset(-1);
-      } finally {
-        setLoading(false);
-        isLoadingRef.current = false;
-      }
-    },
-    [router]
-  );
+  return { items: data.posts, nextOffset: data.nextOffset };
+}
+
+
+export default function FeedPage() {
+    const {
+    items: posts,
+    setItems: setPosts,
+    loading,
+    error, 
+    offset,
+    fetchNext,
+    reset,
+  } = usePagination<PostData>(fetchPostsApi);
 
   useEffect(() => {
-    fetchPosts(0);
-  }, [fetchPosts]);
+    fetchNext();
+  }, [fetchNext]);
 
   useEffect(() => {
     const handleScroll = () => {
       if (
         window.innerHeight + document.documentElement.scrollTop >=
           document.documentElement.offsetHeight - 1000 &&
-        nextOffset !== -1
+        offset !== -1
       ) {
-        fetchPosts(nextOffset);
+        fetchNext();
       }
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [nextOffset, fetchPosts]);
+  }, [offset, fetchNext]);
 
   const handleLike = async (postId: string) => {
     try {
@@ -96,7 +78,7 @@ export default function FeedPage() {
 
       // Optimistically update the post's like status
       setPosts((prev) =>
-        prev.map((post) =>
+        prev.map((post : PostData) =>
           post.id === postId
             ? {
                 ...post,
@@ -112,10 +94,8 @@ export default function FeedPage() {
   };
 
   const handleTryAgain = () => {
-    setError(null);
-    setPosts([]);
-    setNextOffset(0);
-    fetchPosts(0);
+    reset();
+    fetchNext();
   };
 
   const renderContent = () => {
@@ -151,7 +131,7 @@ export default function FeedPage() {
             <p>Loading more posts...</p>
           </div>
         )}
-        {nextOffset === -1 && !loading && posts.length > 0 && (
+        {offset === -1 && !loading && posts.length > 0 && (
           <div className={styles.endMessage}>
             <p>You've reached the end!</p>
           </div>
