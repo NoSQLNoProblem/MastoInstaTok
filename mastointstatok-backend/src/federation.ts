@@ -17,10 +17,9 @@ import { getAcceptRecord, getFollowRecord, insertAcceptRecord, insertFollowRecor
 
 const logger = getLogger("mastointstatok-backend");
 
-const federation = createFederation({
+export const federation = createFederation({
   kv: new MongoKvStore(),
   queue: new InProcessMessageQueue(),
-  allowPrivateAddress: true
 });
 
 const kv = new MongoKvStore();

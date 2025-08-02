@@ -34,6 +34,10 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.get("/.well-known/webfinger", (req, res) =>{
+  console.log("hello world");
+})
+
 app.use(integrateFederation(federation, (req) =>  req.user));
 app.use(express.json())
 app.use("/api", AuthRouter);
