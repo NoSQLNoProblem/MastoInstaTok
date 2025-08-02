@@ -17,9 +17,10 @@ import { getAcceptRecord, getFollowRecord, insertAcceptRecord, insertFollowRecor
 
 const logger = getLogger("mastointstatok-backend");
 
-const federation = createFederation({
+export const federation = createFederation({
   kv: new MongoKvStore(),
   queue: new InProcessMessageQueue(),
+  origin: "https://bbd-grad-project.co.za"
 });
 
 const kv = new MongoKvStore();
@@ -27,6 +28,7 @@ const kv = new MongoKvStore();
 federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier) => {
   const user = await FindUserByUri((await ctx.getActorUri(identifier)).href);
   if (!user) return null;
+  console.log("This line means that the web finger is making a request to object dispatcher");
 
   return new Person({
     id: new URL(user.actorId),
@@ -114,6 +116,7 @@ federation
 federation
   .setInboxListeners("/api/users/{identifier}/inbox", "/api/inbox")
   .on(Follow, async (ctx, follow) => {
+    console.log("Received a follow request")
     if (follow.id == null || follow.actorId == null || follow.objectId == null) {
       return;
     }

@@ -23,8 +23,8 @@ const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za
 
 app.set("trust proxy", true);
 
-
-
+app.use(integrateFederation(federation, (req) =>  req.user));
+app.use(express.json())
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -44,8 +44,6 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(integrateFederation(federation, (req) =>  req.user));
-app.use(express.json())
 app.use("/api", AuthRouter);
 app.use("/api", UserRouter);
 

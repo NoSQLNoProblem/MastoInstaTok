@@ -12,6 +12,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
     let collectionPage;
     const handle = request.params.user;
     if(await isLocalUser(request, handle )){
+        console.log("is a local user so come in here")
         let cursor : string;
         if(!next){
             cursor = getMaxObjectId().toHexString();
@@ -51,6 +52,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
     }
 
     const items: User[] = []
+    console.log("the collection page is", collectionPage)
     try {
         for await (const item of collectionPage.getItems()) {
             try {

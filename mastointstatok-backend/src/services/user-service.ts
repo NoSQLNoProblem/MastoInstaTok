@@ -32,10 +32,13 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
 
 export async function FindUserByUserHandle(userHandle: string, request: Request) {
   const ctx = createContext(request);
+  console.log("Create context successfully");
   const actor = await LookupUser(userHandle, request);
+  console.log("The actor is >>>>>>>>> ", actor)
   const actorId = actor?.id;
   const summary = actor?.summary
   if (!actorId) return null
+  console.log("Made it here ");
   const user: User = {
     actorId: actorId.href,
     bio: summary as string,
@@ -45,8 +48,10 @@ export async function FindUserByUserHandle(userHandle: string, request: Request)
   return user;
 }
 export async function LookupUser(userHandle: string, request : Request) {
+  console.log(userHandle);
   const ctx = createContext(request);
   if(await isLocalUser(request, userHandle)){
+    console.log("this should not be here");
      const actor = await FindUserByUri(ctx.getActorUri(userHandle.split("@")[1]).href);
      if(!actor?.actorId || !actor.username ) return null;
      return new Person({
