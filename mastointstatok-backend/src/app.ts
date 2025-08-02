@@ -35,13 +35,6 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 app.use(passport.initialize());
 app.use(passport.session());
 
-  app.use(
-    cors({
-      origin: 'http://localhost:3000',
-      credentials: true,
-    }),
-  );
-
 app.use(integrateFederation(federation, (req) =>  req.user));
 app.use(express.json())
 app.use("/api", AuthRouter);
