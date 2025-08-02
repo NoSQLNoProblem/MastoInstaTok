@@ -115,6 +115,7 @@ federation
 federation
   .setInboxListeners("/api/users/{identifier}/inbox", "/api/inbox")
   .on(Follow, async (ctx, follow) => {
+    console.log("Received a follow request")
     if (follow.id == null || follow.actorId == null || follow.objectId == null) {
       return;
     }

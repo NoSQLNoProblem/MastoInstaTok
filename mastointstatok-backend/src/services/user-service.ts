@@ -64,7 +64,7 @@ export async function LookupUser(userHandle: string, request : Request) {
       following: ctx.getFollowingUri(actor.username),
     });
   }
-  const actor = await ctx.lookupObject("acct:" + userHandle.substring(1, userHandle.length)) as Person;
+  const actor = await ctx.lookupObject(userHandle) as Person;
   return actor;
 }
 
