@@ -32,10 +32,13 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
 
 export async function FindUserByUserHandle(userHandle: string, request: Request) {
   const ctx = createContext(request);
+  console.log("Create context successfully");
   const actor = await LookupUser(userHandle, request);
+  console.log("The actor is >>>>>>>>> ", actor)
   const actorId = actor?.id;
   const summary = actor?.summary
   if (!actorId) return null
+  console.log("Made it here ");
   const user: User = {
     actorId: actorId.href,
     bio: summary as string,

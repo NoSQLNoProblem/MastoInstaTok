@@ -21,6 +21,7 @@ UserRouter.get('/platform/users/:userHandle', async (req, res) => {
             });
         }
         const user = await FindUserByUserHandle(req.params.userHandle, req);
+        console.log("THE USER IS >>>>>>>>>>>>>", user)
         if (user == null) return res.status(404).json({ error: 'No user found for provided username.' })
         return res.json(user);
     } catch {
