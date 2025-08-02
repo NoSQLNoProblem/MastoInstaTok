@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, Endpoints, InProcessMessageQueue, type Context, type Recipient } from "@fedify/fedify";
+import { Accept, Endpoints, InProcessMessageQueue, Undo, type Context, type Recipient } from "@fedify/fedify";
 import {
   createFederation,
   exportJwk,
@@ -13,7 +13,8 @@ import type { AcceptObject, Follower, FollowObject} from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
 import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
-import { getAcceptRecord, getFollowRecord, insertAcceptRecord, insertFollowRecord } from "./database/object-queries.js";
+import { getAcceptRecord, getFollowRecord, getUndoRecord, insertAcceptRecord, insertFollowRecord, insertUndoRecord } from "./database/object-queries.js";
+import { ValidationError } from "./lib/errors.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -176,6 +177,20 @@ federation.setObjectDispatcher(Follow,
   }
 )
 
+federation.setObjectDispatcher(Undo, 
+  "/users/{userId}/undos/{undoId}",
+  async (ctx, { userId, undoId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${undoId}`);
+    const followObject : FollowObject | null = await getUndoRecord(id); 
+    if(!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
+    return new Undo({
+      id: new URL(followObject?.id),
+      actor: new URL(followObject?.actor),
+      object: new URL(followObject?.object)
+    });
+  }
+)
+
 export function createContext(request:Request){
   const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
   console.log("CONEXT URL: " + url);
@@ -210,6 +225,38 @@ export async function sendFollow(
     object: recipient.id.href, 
   })
 
+  return true;
+}
+
+export async function sendUnfollow(
+  ctx: Context<unknown>,
+  senderId: string,
+  recipient: Recipient,
+  followObject: FollowObject,
+) {
+  if(!followObject || !followObject.id) throw new ValidationError();
+  if(!recipient.id) throw new ValidationError;
+  const sender = ctx.parseUri(new URL(senderId));
+  const resourceGUID = crypto.randomUUID().split("-")[0]
+
+  if(sender?.type !== "actor"){
+    return false;
+  }
+  await ctx.sendActivity(
+    { identifier: sender.identifier},
+    recipient,
+    new Undo({
+      id: new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/undos/${resourceGUID}`),
+      actor: ctx.getActorUri(sender.identifier),
+      object: new URL(followObject.id),
+    }),
+  );
+
+  insertUndoRecord({
+    id: `${ctx.canonicalOrigin}/users/${senderId}/undos/${resourceGUID}`,
+    actor: ctx.getActorUri(sender.identifier).href,
+    object: recipient.id.href, 
+  })
   return true;
 }
 

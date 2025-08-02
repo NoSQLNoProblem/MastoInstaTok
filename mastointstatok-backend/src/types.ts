@@ -34,3 +34,9 @@ export type FollowObject = {
   actor: string,
   object : string
 }
+
+export type UndoObject = {
+  id: string,
+  actor: string,
+  object : string
+}

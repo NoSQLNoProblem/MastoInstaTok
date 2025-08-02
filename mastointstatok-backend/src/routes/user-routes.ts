@@ -3,16 +3,19 @@ import express from 'express';
 import { FindUserByUserHandle, isLocalUser, LookupUser } from '../services/user-service.js';
 import { FindUser, UpdateUser } from '../database/user-queries.js';
 import { GetOrderedCollectionPage } from '../services/follow-service.js';
-import { createContext, sendFollow } from '../federation.js';
-import { AddFollower, AddFollowing } from '../database/follow-queries.js';
+import { createContext, sendFollow, sendUnfollow } from '../federation.js';
+import { AddFollower, AddFollowing, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
 import type { User } from '../types.js';
+import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js';
+import { nodeInfoToJson } from '@fedify/fedify';
+import { getFollowRecordByActors } from '../database/object-queries.js';
 export const UserRouter = express.Router();
 
-UserRouter.get('/platform/users/:userHandle', async (req, res) => {
+UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
     try {
         if (req.params.userHandle === "me") {
             const user = await FindUser(req.user as Profile)
-            if (user == null) return res.status(404).json({ error: 'No user found' })
+            if (user == null) throw new NotFoundError();
             return res.json({
                 actorId: user.actorId,
                 bio: user.bio,
@@ -23,82 +26,125 @@ UserRouter.get('/platform/users/:userHandle', async (req, res) => {
         }
 
         if (!RegExp("@.+@.+").test(req.params.userHandle)) {
-        return res.status(400).json({ error: "Invalid user handle provided" })
+            throw new ValidationError()
         }
-        
+
         const user = await FindUserByUserHandle(req.params.userHandle, req);
-        console.log("THE USER IS >>>>>>>>>>>>>", user)
-        if (user == null) return res.status(404).json({ error: 'No user found for provided username.' })
-        return res.json(user);
-    } catch {
-        return res.status(500).json({ error: "An internal error occurred while retrieving the user." })
+        if (user == null) throw new NotFoundError();
+        res.json(user);
+        next();
+
+    } catch (e) {
+        next(e);
     }
 });
 
-UserRouter.post('/platform/users/me', async (req, res) => {
+UserRouter.post('/platform/users/me', async (req, res, next) => {
     try {
         const user = await FindUser(req.user as Profile) as User
         const { displayName, bio } = req.body;
-        if (!displayName || !bio) return res.status(400).json({ error: "Required fields missing" })
-        if (user.displayName != null) return res.status(400).json({ error: "Already registed with username" })
+        if (!displayName || !bio) throw new ValidationError()
+        if (user.displayName != null) throw new ConflictError();
         user.displayName = displayName;
         user.bio = bio;
-        return res.json(await UpdateUser(user));
+        res.json(await UpdateUser(user));
+        next()
     }
-    catch {
-        return res.status(500).json( { error: "Could not find yourself" } );
+    catch (e) {
+        next(e)
     }
 })
 
-UserRouter.get('/platform/users/:user/followers', async (req, res) => {
-    try{
+UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
+    try {
         if (!RegExp("@.+@.+").test(req.params.user)) {
-            return res.status(400).json({ error: "Invalid user handle provided" })
+            throw new ValidationError();
         }
         const user = await LookupUser(req.params.user, req)
-        if(!user || !user.followersId) return res.status(404).json( { error: "Failed to find user" } );
-        return res.json(await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []);
-    }catch{
-        return res.status(500).json( { error: "Error getting followers" } );
+        if (!user || !user.followersId) throw new NotFoundError();
+        res.json(await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []);
+        next();
+
+    } catch (e) {
+        next(e);
     }
 })
 
-UserRouter.get('/platform/users/:user/following', async (req, res) => {
-    try{
+UserRouter.get('/platform/users/:user/following', async (req, res, next) => {
+    try {
         if (!RegExp("@.+@.+").test(req.params.user)) {
-            return res.status(400).json({ error: "Invalid user handle provided" })
+            throw new ValidationError();
         }
-        const user = await  LookupUser(req.params.user, req)
-        if(!user || !user.followingId) return res.status(404).json({ error: "Could not find user" });
-        return res.json(await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined) ?? []);
-    }catch{
-        return res.status(500).json( { error: "something diabolical happened" } );
+        const user = await LookupUser(req.params.user, req)
+        if (!user || !user.followingId) throw new NotFoundError();
+        res.json(await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined) ?? []);
+    } catch (e) {
+        next(e)
     }
 })
 
-UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res) => {
-    try{
+UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, next) => {
+    try {
         if (!RegExp("@.+@.+").test(req.params.followHandle)) {
-            return res.status(400).json({ error: "Invalid user handle provided" })
+            throw new ValidationError();
         }
         const user = await FindUser(req.user as Profile)
-        if(!user) return res.status(400).json({ error: "The signed in user could not be resolved." });
+        if (!user) throw new NotFoundError();
         const ctx = createContext(req);
         const recipient = await LookupUser(req.params.followHandle, req);
-        if(!recipient || !recipient.id || !recipient.inboxId) return res.status(400).json("Cannot follow someone who doesn't exist moron");
-        if(await isLocalUser(req, req.params.followHandle)){
-            if(!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href ))){
-                return res.status(409).json( { error : "Already following" } )
+        if (!recipient || !recipient.id || !recipient.inboxId) throw new NotFoundError();
+        if (await isLocalUser(req, req.params.followHandle)) {
+            if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+                throw new ConflictError();
             }
-            if(!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))){
-                return res.status(409).json( { error : "Already following" } )
+            if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
+                throw new ConflictError();
             }
-            return res.status(202).json({"message" : "Successfully created the user"});
+            res.status(202).json({ "message": "Successfully created the user" });
+            next();
+        } else {
+            await sendFollow(ctx, user.actorId, recipient);
+            res.status(202);
+            next();
         }
-        await sendFollow(ctx, user.actorId, recipient);
-        return res.status(202);
-    }catch{
-        return res.status(500);
+    } catch (e) {
+        next(e)
+    }
+})
+
+UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, next) => {
+    try {
+        if (!RegExp("@.+@.+").test(req.params.followHandle)) {
+            throw new ValidationError();
+        }
+        const user = await FindUser(req.user as Profile)
+        if (!user) throw new NotFoundError();
+        const ctx = createContext(req);
+        const recipient = await LookupUser(req.params.followHandle, req);
+        if (!recipient || !recipient.id || !recipient.inboxId) throw new ValidationError();
+
+        const followObject = await getFollowRecordByActors(user.actorId, recipient.id.href);
+
+        if (!(await RemoveFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+            throw new ConflictError();
+        }
+        if (!(await RemoveFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
+            throw new ConflictError();
+        }
+
+        if (await isLocalUser(req, req.params.followHandle)) {
+            res.status(204).json({ "message": "Successfully deleted the user" });
+            next()
+        }
+        else {
+            // Get the follower object corresponding to the sender and recipient
+            if(!followObject) throw new NotFoundError();
+            await sendUnfollow(ctx, user.actorId, recipient, followObject);
+            res.status(204).json({ "message": "Successfully deleted the user" });
+            next()
+        }
+    } catch (e) {
+        next(e);
     }
 })
 

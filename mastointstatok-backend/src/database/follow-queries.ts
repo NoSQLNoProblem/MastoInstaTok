@@ -19,6 +19,19 @@ export async function AddFollower(actorId: string, followerId: string, followerI
     return true;
 }
 
+export async function RemoveFollower(actorId: string, followerId: string, followerInbox: string) {
+    const followerToInsert: Follower = {
+        uri: followerId,
+        inboxUri: followerInbox,
+        actorId: actorId
+    }
+    if(!followersCollection.findOne(followerToInsert)){
+        return false;
+    }
+    await followersCollection.deleteOne(followerToInsert);
+    return true;
+}
+
 export async function AddFollowing(actorId: string, followingId: string, inboxUri: string) {
     const followingToInsert: Following = {
         followerId: actorId,
@@ -29,6 +42,19 @@ export async function AddFollowing(actorId: string, followingId: string, inboxUr
         return false;
     }
     followingCollection.insertOne(followingToInsert);
+    return true;
+}
+
+export async function RemoveFollowing(actorId: string, followingId: string, inboxUri: string) {
+    const followingToInsert: Following = {
+        followerId: actorId,
+        followeeId: followingId,
+        inboxUri: inboxUri
+    }
+    if(!await followingCollection.findOne(followingToInsert)){
+        return false;
+    }
+    followingCollection.deleteOne(followingToInsert);
     return true;
 }
 
