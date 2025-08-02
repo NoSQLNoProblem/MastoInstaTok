@@ -8,7 +8,7 @@ import styles from "./feed.module.css";
 import { apiService } from "@/services/apiService";
 import { usePagination } from "@/hooks/usePagination";
 
-interface PostData {
+export interface PostData {
   id: string;
   username: string;
   avatar?: string;
@@ -21,7 +21,7 @@ interface PostData {
 
 const PAGE_SIZE = 5;
 
-async function fetchPostsApi(offset: number) {
+export async function fetchPostsApi(offset: number) {
    // THIS IS FOR TESTING VIA MOCKS
         //==========================================
         const response = await fetch(
