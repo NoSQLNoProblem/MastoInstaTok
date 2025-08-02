@@ -25,9 +25,10 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         const baseUri = getBaseUri(request);
         return {
             items : await Promise.all(followersCollection.users.map(async (follower) => {
-                const user = await LookupUser(follower.uri, request) as Person;
+                const user = await LookupUser(follower.uri, request);
+                if(!user || !user.id) return;
                 return {
-                    actorId: user.id?.href,
+                    actorId: user.id.href,
                     bio: user.summary,
                     displayName: user.name,
                     fullHandle: `@${user.preferredUsername}@${(new URL(user!.id!.href).host)})` 
