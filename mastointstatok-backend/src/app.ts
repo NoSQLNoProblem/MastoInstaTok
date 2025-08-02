@@ -9,13 +9,15 @@ import session from 'express-session';
 import 'dotenv/config'
 import { CreateUser } from "./services/user-service.js";
 import { UserRouter } from "./routes/user-routes.js";
-import cors from "cors";
 
 const logger = getLogger("mastointstatok-backend");
 
 export const app = express();
 
 app.set("trust proxy", true);
+
+app.use(integrateFederation(federation, (req) =>  req.user));
+app.use(express.json())
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -35,8 +37,6 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(integrateFederation(federation, (req) =>  req.user));
-app.use(express.json())
 app.use("/api", AuthRouter);
 app.use("/api", UserRouter);
 

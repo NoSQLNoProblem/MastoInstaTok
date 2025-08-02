@@ -7,51 +7,26 @@ import styles from "./profile.module.css";
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePagination } from "@/hooks/usePagination";
+import { PostData } from "@/types/post";
+import { UserProfile } from "@/types/profile";
+import { apiService } from "@/services/apiService";
 
-interface UserPost {
-  id: string;
-  image: string;
-  caption: string;
-  likes: number;
-  timestamp: number;
-}
-
-interface UserProfile {
-  username: string;
-  fullHandle: string;
-  bio: string;
-  posts: number;
-  followers: number;
-  following: number;
-  avatar: string;
-}
-
-interface PostData {
-  id: string;
-  username: string;
-  avatar?: string;
-  imageURL: string;
-  caption: string;
-  likes: number;
-  isLiked: boolean;
-  timestamp: string;
-}
 const PAGE_SIZE = 6; // Number of posts to show per page
 async function fetchPostsApi(offset: number) {
   // THIS IS FOR TESTING VIA MOCKS
   //==========================================
-  const response = await fetch(
-    `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
-    {
-      credentials: "include",
-    }
-  );
-  const data = await response.json();
+//   const response = await fetch(
+//     `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
+//     {
+//       credentials: "include",
+//     }
+//   );
+//   const data = await response.json();
   //===========================================
 
-  // const data = await apiService.get(
-  //   `/me?startIndex=${offset}&pageSize=${PAGE_SIZE}`
-  // );
+  const data = await apiService.get(
+    `/me?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+  );
 
   return { items: data.posts, nextOffset: data.nextOffset };
 }
@@ -89,6 +64,7 @@ export default function ProfilePage() {
       followers: 1250,
       following: 180,
       avatar: `/placeholder.svg?height=150&width=150&query=user`,
+      fullName: user?.displayName || "",
     };
     setProfile(profile);
   }, [isAuthenticated, isLoading, user, router]);
@@ -224,7 +200,7 @@ export default function ProfilePage() {
                     onClick={() => setSelectedPost(post)}
                   >
                     <img
-                      src={post.imageURL || "/placeholder.svg"}
+                      src={post.mediaURL || "/placeholder.svg"}
                       alt="Post"
                       className={styles.postImage}
                     />
@@ -258,7 +234,7 @@ export default function ProfilePage() {
             </button>
             <div className={styles.modalImage}>
               <img
-                src={selectedPost?.imageURL || "/placeholder.svg"}
+                src={selectedPost?.mediaURL || "/placeholder.svg"}
                 alt="Post"
               />
             </div>

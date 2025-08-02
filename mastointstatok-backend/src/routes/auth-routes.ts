@@ -12,16 +12,6 @@ AuthRouter.get('/auth/google/callback',
   (req, res) => res.redirect('/auth/callback')
 );
 
-AuthRouter.get('/auth/me', async (req, res) => {
-  if (req.isAuthenticated()) {
-    const user = res.json(await FindUser(req.user as Profile))
-    if (user == null) return res.status(404).json({ error: 'No user found' })
-  } 
-  else {
-    res.status(401).json({ message: 'Unauthorized' });
-  }
-});
-
 AuthRouter.post('/auth/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) { return next(err); }

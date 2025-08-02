@@ -7,35 +7,24 @@ import Post from "@/components/Post";
 import styles from "./feed.module.css";
 import { apiService } from "@/services/apiService";
 import { usePagination } from "@/hooks/usePagination";
-
-export interface PostData {
-  id: string;
-  username: string;
-  avatar?: string;
-  imageURL: string;
-  caption: string;
-  likes: number;
-  isLiked: boolean;
-  timestamp: string;
-}
-
+import { PostData } from "@/types/post";
 const PAGE_SIZE = 5;
 
 export async function fetchPostsApi(offset: number) {
    // THIS IS FOR TESTING VIA MOCKS
         //==========================================
-        const response = await fetch(
-          `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await response.json();
+        // const response = await fetch(
+        //   `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
+        //   {
+        //     credentials: "include",
+        //   }
+        // );
+        // const data = await response.json();
         //===========================================
 
-        // const data = await apiService.get(
-        //   `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
-        // );
+        const data = await apiService.get(
+          `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+        );
 
   return { items: data.posts, nextOffset: data.nextOffset };
 }
