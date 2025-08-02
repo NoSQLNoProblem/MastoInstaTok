@@ -38,21 +38,20 @@ export default function FeedPage() {
       setError(null);
 
       try {
-
         // THIS IS FOR TESTING VIA MOCKS
         //==========================================
-        // const response = await fetch(
-        //   `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
-        //   {
-        //     credentials: "include",
-        //   }
-        // );
-        // const data = await response.json();
+        const response = await fetch(
+          `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
+          {
+            credentials: "include",
+          }
+        );
+        const data = await response.json();
         //===========================================
 
-        const data = await apiService.get(
-          `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
-        );
+        // const data = await apiService.get(
+        //   `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+        // );
 
         setPosts((prev) =>
           offset === 0 ? data.posts : [...prev, ...data.posts]
@@ -90,18 +89,26 @@ export default function FeedPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [nextOffset, fetchPosts]);
 
-  const handleLike = (postId: string) => {
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-            }
-          : post
-      )
-    );
+  const handleLike = async (postId: string) => {
+    try {
+      // Uncomment this line when using the real API
+      // await apiService.post(`api//feed/like?postId=${postId}`, {});
+
+      // Optimistically update the post's like status
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                isLiked: !post.isLiked,
+                likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+              }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error("Error liking post:", error);
+    }
   };
 
   const handleTryAgain = () => {
