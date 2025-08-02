@@ -24,7 +24,7 @@ export default function RegistrationPage() {
       return false;
     }
     else if (biography.length > 255 || biography.length <=0) {
-      setError("The biography is too long. Please shorten it to 255 characters or less.");
+      setError("Your biography is too long. Please shorten it to 255 characters or less.");
       return false;
     }
     setError("");

@@ -6,17 +6,7 @@ import Navigation from "@/components/Navigation";
 import Post from "@/components/Post";
 import styles from "./feed.module.css";
 import { apiService } from "@/services/apiService";
-
-interface PostData {
-  id: string;
-  username: string;
-  avatar?: string;
-  imageURL: string;
-  caption: string;
-  likes: number;
-  isLiked: boolean;
-  timestamp: string;
-}
+import { PostData } from "@/types/post";
 
 const PAGE_SIZE = 5;
 
@@ -38,9 +28,8 @@ export default function FeedPage() {
       setError(null);
 
       try {
-
         // THIS IS FOR TESTING VIA MOCKS
-        //==========================================
+        // ==========================================
         // const response = await fetch(
         //   `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
         //   {
@@ -48,7 +37,7 @@ export default function FeedPage() {
         //   }
         // );
         // const data = await response.json();
-        //===========================================
+        // ===========================================
 
         const data = await apiService.get(
           `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`

@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, Endpoints, InProcessMessageQueue, Note, OrderedCollection, type Recipient } from "@fedify/fedify";
+import { Accept, Endpoints, InProcessMessageQueue, type Context, type Recipient } from "@fedify/fedify";
 import {
   createFederation,
   exportJwk,
@@ -9,10 +9,11 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import type { Follower, User } from "./types.js";
+import type { AcceptObject, Follower, FollowObject} from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
-import { AddFollower, getInternalUsersFollowersByUserId } from "./database/follow-queries.js";
+import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
+import { getAcceptRecord, getFollowRecord, insertAcceptRecord, insertFollowRecord } from "./database/object-queries.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -84,8 +85,6 @@ federation
         ctx.getActorUri(identifier).href,
         { cursor, limit: 10 }
       );
-      console.log(ctx.getActorUri(identifier))
-      console.log(users)
       const items: Recipient[] = users.map((actor: Follower) => ({
         id: new URL(actor.uri),
         inboxId: new URL(actor.inboxUri),
@@ -98,9 +97,19 @@ federation
   )
   .setFirstCursor((ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
-federation.setFollowingDispatcher("/api/users/{identifier}/following", async (ctx, identifier, cursor)=>{
-  return null;
-})
+
+federation
+  .setFollowingDispatcher("/api/users/{identifier}/follows", 
+    async (ctx, identifier, cursor) => {
+    if (cursor == null) return null;
+    const { users: followings, nextCursor, last } = await getInternalUsersFollowingByUserId(
+      identifier,
+      { cursor, limit: 10 }
+    );
+    const items = followings.map(following => new URL(following.followeeId));
+    return { items, nextCursor: last ? null : nextCursor }
+  })
+  .setFirstCursor(async (ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
 federation
   .setInboxListeners("/api/users/{identifier}/inbox", "/api/inbox")
@@ -113,17 +122,92 @@ federation
 
     const follower = await follow.getActor(ctx);
     if (follower == null) return;
+    const resourceGUID = crypto.randomUUID().split("-")[0]
+    console.log("the sending identifier for a accept is")
+    console.log(parsed.identifier)
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId, object: follow, to: follow.actorId }),
+      new Accept({
+         id : new URL(`${ctx.canonicalOrigin}/${follow.objectId}/accepts/${resourceGUID}`),
+         actor: follow.objectId, 
+         object: follow, 
+         to: follow.actorId 
+      }),
     );
+    insertAcceptRecord({
+         id : new URL(`${ctx.canonicalOrigin}/${follow.objectId}/accepts/${resourceGUID}`),
+         actor: follow.objectId, 
+         object: follow, 
+         to: follow.actorId  
+    })
     AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
   });
+
+federation.setObjectDispatcher(
+  Accept,
+  "/users/{userId}/accept/{acceptId}",
+  async (ctx, {userId, acceptId} ) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${acceptId}`);
+    const acceptObject : AcceptObject | null = await getAcceptRecord(id);
+    if (!acceptObject) return null;
+    return new Accept({
+      id: acceptObject.id,
+      actor: acceptObject.actor,
+      object: acceptObject.object,
+      to: acceptObject.to
+    });
+  }
+);
+
+federation.setObjectDispatcher(Follow, 
+  "/users/{userId}/follows/{followId}",
+  async (ctx, { userId, followId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${followId}`);
+    const followObject : FollowObject | null = await getFollowRecord(id); 
+    if(!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
+    return new Follow({
+      id: new URL(followObject?.id),
+      actor: new URL(followObject?.actor),
+      object: new URL(followObject?.object)
+    });
+  }
+)
 
 export function createContext(request:Request){
   const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
   return federation.createContext(new URL(url), undefined);
+}
+
+export async function sendFollow(
+  ctx: Context<unknown>,
+  senderId: string,
+  recipient: Recipient,
+) {
+  const resourceGUID = crypto.randomUUID().split("-")[0]
+  if(!recipient || !recipient.id) return false;
+
+  const sender = ctx.parseUri(new URL(senderId));
+  if(sender?.type !== "actor"){
+    return false;
+  }
+  await ctx.sendActivity(
+    { identifier: sender.identifier},
+    recipient,
+    new Follow({
+      id: new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/follows/${resourceGUID}`),
+      actor: ctx.getActorUri(sender.identifier),
+      object: recipient.id,
+    }),
+  );
+
+  insertFollowRecord({
+    id: `${ctx.canonicalOrigin}/users/${senderId}/follows/${resourceGUID}`,
+    actor: ctx.getActorUri(sender.identifier).href,
+    object: recipient.id.href, 
+  })
+
+  return true;
 }
 
 export default federation;

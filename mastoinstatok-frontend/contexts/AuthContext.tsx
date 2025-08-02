@@ -3,25 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { apiService } from '@/services/apiService';
-
-// This interface should match the user object your backend sends from /api/auth/me
-export type User = {
-    googleId ?: string,
-    email ?: string,
-    displayName?: string,
-    actorId: string,
-    bio ?: string,
-    fullHandle ?: string
-  };
-
-interface AuthContextType {
-  isAuthenticated: boolean;
-  user: User | null;
-  logout: () => void;
-  isLoading: boolean;
-  registrationRequired: boolean;
-  refreshUser: () => void;
-}
+import { AuthContextType, User } from '@/types/auth-context';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
