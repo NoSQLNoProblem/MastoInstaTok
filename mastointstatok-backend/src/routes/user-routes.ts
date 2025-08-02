@@ -21,6 +21,11 @@ UserRouter.get('/platform/users/:userHandle', async (req, res) => {
                 avatarURL: user.avatarURL
             });
         }
+
+        if (!RegExp("@.+@.+").test(req.params.userHandle)) {
+        return res.status(400).json({ error: "Invalid user handle provided" })
+        }
+        
         const user = await FindUserByUserHandle(req.params.userHandle, req);
         console.log("THE USER IS >>>>>>>>>>>>>", user)
         if (user == null) return res.status(404).json({ error: 'No user found for provided username.' })
@@ -74,7 +79,6 @@ UserRouter.get('/platform/users/:user/following', async (req, res) => {
 
 UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res) => {
     try{
-        console.log("made it here lol")
         if (!RegExp("@.+@.+").test(req.params.followHandle)) {
             return res.status(400).json({ error: "Invalid user handle provided" })
         }

@@ -10,15 +10,17 @@ import session from 'express-session';
 import 'dotenv/config'
 import { CreateUser } from "./services/user-service.js";
 import { UserRouter } from "./routes/user-routes.js";
+import cors from "cors";
 
 const logger = getLogger("mastointstatok-backend");
 
 export const app = express();
 
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true
-}));
+const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za'];
+    app.use(cors({
+      origin: allowedOrigins,
+      credentials: true
+    }));
 
 app.set("trust proxy", true);
 
