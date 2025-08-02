@@ -1,93 +1,97 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Navigation from "@/components/Navigation"
 import UserCard from "@/components/UserCard"
 import styles from "./search.module.css"
+import { apiService } from "@/services/apiService"
 
 interface User {
-  id: string
-  username: string
-  fullName: string
-  avatar: string
-  isFollowing: boolean
+  actorId: string
+  displayName: string
+  fullHandle: string
+  bio: string
+  email?: string
   followers: number
+  isFollowing: boolean
 }
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [users, setUsers] = useState<User[]>([])
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Generate mock users
-  const generateMockUsers = (query: string): User[] => {
-    if (!query.trim()) return []
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!searchQuery.trim()) return
 
-    const mockUsers: User[] = []
-    for (let i = 1; i <= 10; i++) {
-      mockUsers.push({
-        id: `user-${i}`,
-        username: `${query.toLowerCase()}${i}`,
-        fullName: `${query} User ${i}`,
-        avatar: `/placeholder.svg?height=60&width=60&query=user avatar ${i}`,
-        isFollowing: Math.random() > 0.5,
-        followers: Math.floor(Math.random() * 1000),
+    setLoading(true)
+    setError(null)
+    setUser(null)
+
+    try {
+      const handle = searchQuery.trim()
+      const userData = await apiService.get(`/platform/users/${handle}`)
+
+      const followers = await apiService.get(`/platform/users/${handle}/followers`)
+      const me = await apiService.get(`/platform/users/me`)
+      const following = await apiService.get(`/platform/users/${me.fullHandle}/following`)
+
+      console.log(following);
+
+      const isFollowing = Array.isArray(following.items) && following.items.some((item: any) => {
+        return item && item.id === `https://www.bbd-grad-project.co.za/api/users/${handle}`
       })
+
+      setUser({
+        ...userData,
+        followers: followers.totalItems ?? 0,
+        isFollowing: isFollowing,
+      })
+    } catch (err: any) {
+      console.error(err)
+      setError("No users found.")
+    } finally {
+      setLoading(false)
     }
-    return mockUsers
   }
 
-  // Search users with debounce
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchQuery.trim()) {
-        setLoading(true)
-        // Simulate API delay
-        setTimeout(() => {
-          const results = generateMockUsers(searchQuery)
-          setUsers(results)
-          setLoading(false)
-        }, 500)
+  const handleFollow = async () => {
+    if (!user) return
+    try {
+      await apiService.post(`/platform/users/me/follows/${user.fullHandle}`)
+      setUser((prev) =>
+        prev ? { ...prev, isFollowing: true, followers: prev.followers + 1 } : null
+      )
+    } catch (err: any) {
+      console.error(err)
+      if (err.message?.includes("already")) {
+        setError("You're already following this user.")
       } else {
-        setUsers([])
+        setError("An error occurred while trying to follow the user.")
       }
-    }, 300)
-
-    return () => clearTimeout(timeoutId)
-  }, [searchQuery])
-
-  const handleFollow = (userId: string) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId
-          ? {
-              ...user,
-              isFollowing: !user.isFollowing,
-              followers: user.isFollowing ? user.followers - 1 : user.followers + 1,
-            }
-          : user,
-      ),
-    )
+    }
   }
 
   return (
     <div className={styles.container}>
       <Navigation />
-
       <main className={styles.main}>
         <div className={styles.searchContainer}>
           <h1 className={styles.title}>Search Users</h1>
-
-          <div className={styles.searchBox}>
+          <form className={styles.searchBox} onSubmit={handleSearch}>
             <input
               type="text"
-              placeholder="Search for users..."
+              placeholder="@username@domain"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={styles.searchInput}
             />
-            <div className={styles.searchIcon}>🔍</div>
-          </div>
+            <button type="submit" className={styles.searchIcon}>
+              🔍
+            </button>
+          </form>
 
           <div className={styles.results}>
             {loading && (
@@ -97,21 +101,30 @@ export default function SearchPage() {
               </div>
             )}
 
-            {!loading && searchQuery && users.length === 0 && (
+            {!loading && error && (
               <div className={styles.noResults}>
-                <p>No users found for "{searchQuery}"</p>
+                <p>{error}</p>
               </div>
             )}
 
-            {!loading && users.length > 0 && (
+            {!loading && user && (
               <div className={styles.userList}>
-                {users.map((user) => (
-                  <UserCard key={user.id} user={user} onFollow={handleFollow} />
-                ))}
+                <UserCard
+                  user={{
+                    id: user.actorId,
+                    username: user.fullHandle,
+                    fullName: user.displayName,
+                    bio: user.bio,
+                    avatar: "/placeholder.svg?height=60&width=60",
+                    isFollowing: user.isFollowing,
+                    followers: user.followers,
+                  }}
+                  onFollow={handleFollow}
+                />
               </div>
             )}
 
-            {!searchQuery && (
+            {!searchQuery && !user && (
               <div className={styles.placeholder}>
                 <div className={styles.placeholderIcon}>👥</div>
                 <p>Start typing to search for users</p>

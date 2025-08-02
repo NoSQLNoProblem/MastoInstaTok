@@ -7,6 +7,7 @@ interface UserCardProps {
     id: string
     username: string
     fullName: string
+    bio: string
     avatar: string
     isFollowing: boolean
     followers: number
@@ -24,6 +25,7 @@ export default function UserCard({ user, onFollow }: UserCardProps) {
         <div className={styles.userDetails}>
           <h3 className={styles.username}>{user.username}</h3>
           <p className={styles.fullName}>{user.fullName}</p>
+          <p className={styles.fullName}>{user.bio}</p>
           <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
         </div>
       </div>
