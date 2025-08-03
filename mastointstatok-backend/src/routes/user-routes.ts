@@ -173,7 +173,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
             caption,
             fileType: mimeType,
             isLiked : false,
-            mediaType : mimeType == "mp4" ? "video" : "image",
+            mediaType : mimeType == "video/mp4" ? "video" : "image",
             likes : 0,
             userHandle : user.fullHandle,
             mediaURL,
