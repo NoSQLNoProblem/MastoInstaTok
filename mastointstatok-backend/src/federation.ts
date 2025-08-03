@@ -1,14 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, Image, Create, Endpoints, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video } from "@fedify/fedify";
-import {
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
-  importJwk,
-  Follow,
-  Person,
-  Image
-} from "@fedify/fedify";
+import { createFederation, exportJwk, generateCryptoKeyPair, importJwk, Follow, Person, Image, Accept, Create, Endpoints, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
 import type { AcceptObject, Attachment, CreateObject, Follower, FollowObject, NoteObject, UndoObject } from "./types.js";
 import { type Request } from "express";

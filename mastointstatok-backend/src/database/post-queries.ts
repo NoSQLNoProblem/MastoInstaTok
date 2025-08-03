@@ -17,5 +17,5 @@ export async function getPostById(id : string){
 }
 
 export async function getRecentPostsByUserHandle(userHandle : string, cursorTimestamp : number){
-    return postsCollection.find<PostData>({userHandle, timestamp:{$lt:cursorTimestamp}}).limit(5).toArray()
+    return postsCollection.find<PostData>({userHandle, timestamp:{$lt:cursorTimestamp}}).sort({_id:-1}).limit(10).toArray()
 }
