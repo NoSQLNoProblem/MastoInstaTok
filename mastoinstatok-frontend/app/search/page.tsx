@@ -10,6 +10,7 @@ interface User {
   actorId: string
   displayName: string
   fullHandle: string
+  avatar: string
   bio: string
   email?: string
   followers: number
@@ -134,7 +135,7 @@ export default function SearchPage() {
                       username: user.fullHandle,
                       fullName: user.displayName,
                       bio: user.bio,
-                      avatar: "/placeholder.svg?height=60&width=60",
+                      avatar: user.avatar,
                       isFollowing: user.isFollowing,
                       followers: user.followers,
                     }}
