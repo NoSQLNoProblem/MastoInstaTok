@@ -236,6 +236,8 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
 })
 
 UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
+    console.log("here");
+    
     try {
         const user = await FindUser(req.user as Profile) as User;
         const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string);
