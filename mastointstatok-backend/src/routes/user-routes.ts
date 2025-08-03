@@ -22,7 +22,8 @@ UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
                 bio: user.bio,
                 displayName: user.displayName,
                 fullHandle: user.fullHandle,
-                email: user.email
+                email: user.email,
+                avatarURL: user.avatarURL
             });
         }
 

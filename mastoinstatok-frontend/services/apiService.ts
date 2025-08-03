@@ -1,5 +1,3 @@
-// aiFE/services/apiService.ts
-
 const BASE_URL = 'https://bbd-grad-project.co.za/api';
 
 /**

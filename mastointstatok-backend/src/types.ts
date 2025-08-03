@@ -2,12 +2,13 @@ import type { Follow, Note } from "@fedify/fedify";
 
 export type User = {
     googleId ?: string,
-    email ?: string | undefined
+    email ?: string | undefined,
     displayName: string | null,
     actorId: string,
     bio : string | null,
-    username ?: string
-    fullHandle : string
+    username ?: string,
+    fullHandle : string,
+    avatarURL ?: string
   };
 
 export type Follower = {

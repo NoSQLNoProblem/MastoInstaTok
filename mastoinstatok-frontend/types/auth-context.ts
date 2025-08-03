@@ -4,7 +4,8 @@ export type User = {
     displayName?: string,
     actorId: string,
     bio ?: string,
-    fullHandle ?: string
+    fullHandle ?: string,
+    avatarURL ?: string
   };
 
 export interface AuthContextType {
