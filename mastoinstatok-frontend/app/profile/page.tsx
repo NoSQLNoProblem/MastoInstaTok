@@ -199,11 +199,21 @@ export default function ProfilePage() {
                     className={styles.postItem}
                     onClick={() => setSelectedPost(post)}
                   >
-                    <img
-                      src={post.mediaURL || "/placeholder.svg"}
-                      alt="Post"
-                      className={styles.postImage}
-                    />
+                    {post.mediaType === "video" ? (
+                      <video
+                        controls
+                        className={styles.postImage}
+                      >
+                        <source src={post.mediaURL + "#t=1"} type="video/mp4" />
+                      </video>
+                    ) : (
+                      <img
+                        src={post.mediaURL || "/placeholder.svg"}
+                        alt="Post"
+                        className={styles.postImage}
+                      />
+                    )}
+
                     <div className={styles.postOverlay}>
                       <div className={styles.postStats}>
                         <span className={styles.postLikes}>
@@ -233,10 +243,19 @@ export default function ProfilePage() {
               ✕
             </button>
             <div className={styles.modalImage}>
-              <img
-                src={selectedPost?.mediaURL || "/placeholder.svg"}
-                alt="Post"
-              />
+              {selectedPost?.mediaType === "video" ? (
+                <video
+                  controls
+                  
+                >
+                    <source src={selectedPost?.mediaURL + "#t=11"} type="video/mp4" />
+                </video>
+              ) : (
+                <img
+                  src={selectedPost?.mediaURL || "/placeholder.svg"}
+                  alt="Post"
+                />
+              )}
             </div>
             <div className={styles.modalInfo}>
               <div className={styles.modalHeader}>
