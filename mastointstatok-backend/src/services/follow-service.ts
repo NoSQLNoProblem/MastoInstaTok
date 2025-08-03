@@ -8,13 +8,11 @@ import { getMaxObjectId } from "../lib/mongo.js";
 import { FindUserByUri } from "../database/user-queries.js";
 
 export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null,  next?: string) {
-    console.log("HFJAHSFASJFJASLKFJASKLFJL")
     
     const ctx = createContext(request);
     let collectionPage;
     const handle = request.params.user;
     if(await isLocalUser(request, handle )){
-        console.log("is a local user so come in here")
         let cursor : string;
         if(!next){
             cursor = getMaxObjectId().toHexString();
@@ -94,7 +92,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
     }
 }
 
-function getHandleFromUri(uri : string){
+export function getHandleFromUri(uri : string){
     const uriSplit = uri.split("/");
     return `@${uriSplit[uriSplit.length - 1]}@${new URL(uri).host}`;
 }

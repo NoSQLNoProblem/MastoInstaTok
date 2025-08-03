@@ -11,3 +11,11 @@ export async function Post(post: PostData) {
 export async function getPostByUrl(mediaUrl : string){
     return await postsCollection.findOne<PostData>( { mediaUrl } )
 }
+
+export async function getPostById(id : string){
+    return await postsCollection.findOne<PostData>( { id } )
+}
+
+export async function getRecentPostsByUserHandle(userHandle : string, cursorTimestamp : number){
+    return postsCollection.find<PostData>({userHandle, timestamp:{$lt:cursorTimestamp}}).sort({_id:-1}).limit(10).toArray()
+}

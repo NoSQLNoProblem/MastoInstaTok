@@ -52,7 +52,7 @@ export async function insertAttachmentRecord(attachment : Attachment){
 }
 
 export async function getAttachmentRecord(id : URL){
-    return noteCollection.findOne<NoteObject>({id})
+    return attachmentCollection.findOne<Attachment>({id})
 }
 
 export async function insertCreateRecord(create : CreateObject){
