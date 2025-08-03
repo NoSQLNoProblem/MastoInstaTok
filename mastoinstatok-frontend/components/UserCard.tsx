@@ -13,9 +13,18 @@ interface UserCardProps {
     followers: number
   }
   onFollow: (userId: string) => void
+  onUnfollow: (userId: string) => void
 }
 
-export default function UserCard({ user, onFollow }: UserCardProps) {
+export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) {
+  const handleClick = () => {
+    if (user.isFollowing) {
+      onUnfollow(user.id)
+    } else {
+      onFollow(user.id)
+    }
+  }
+
   return (
     <div className={styles.userCard}>
       <div className={styles.userInfo}>
@@ -31,7 +40,7 @@ export default function UserCard({ user, onFollow }: UserCardProps) {
       </div>
 
       <button
-        onClick={() => onFollow(user.id)}
+        onClick={handleClick}
         className={`${styles.followButton} ${user.isFollowing ? styles.following : ""}`}
       >
         {user.isFollowing ? "Unfollow" : "Follow"}
