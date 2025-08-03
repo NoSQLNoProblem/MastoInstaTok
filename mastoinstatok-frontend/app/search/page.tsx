@@ -80,6 +80,19 @@ export default function SearchPage() {
     }
   }
 
+    const handleUnfollow = async () => {
+    if (!user) return
+    try {
+      await apiService.delete(`/platform/users/me/follows/${user.fullHandle}`)
+      setUser((prev) =>
+        prev ? { ...prev, isFollowing: false, followers: Math.max(0, prev.followers - 1) } : null
+      )
+    } catch (err: any) {
+      console.error(err)
+      setError("An error occurred while trying to unfollow the user.")
+    }
+  }
+
   return (
     <div className={styles.container}>
       <Navigation />
@@ -116,17 +129,18 @@ export default function SearchPage() {
             {!loading && user && (
               <div className={styles.userList}>
                 <UserCard
-                  user={{
-                    id: user.actorId,
-                    username: user.fullHandle,
-                    fullName: user.displayName,
-                    bio: user.bio,
-                    avatar: "/placeholder.svg?height=60&width=60",
-                    isFollowing: user.isFollowing,
-                    followers: user.followers,
-                  }}
-                  onFollow={handleFollow}
-                />
+                    user={{
+                      id: user.actorId,
+                      username: user.fullHandle,
+                      fullName: user.displayName,
+                      bio: user.bio,
+                      avatar: "/placeholder.svg?height=60&width=60",
+                      isFollowing: user.isFollowing,
+                      followers: user.followers,
+                    }}
+                    onFollow={() => handleFollow()}
+                    onUnfollow={() => handleUnfollow()}
+                  />
               </div>
             )}
 

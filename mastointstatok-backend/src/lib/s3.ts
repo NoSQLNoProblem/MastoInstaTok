@@ -15,5 +15,4 @@ export async function uploadToS3(base64 : string, mimeType : string, bucket : st
   return result.Location; 
 }
 
-module.exports = { uploadToS3 };
 
