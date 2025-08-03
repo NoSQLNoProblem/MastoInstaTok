@@ -4,7 +4,7 @@ import { FindUserByUserHandle, isLocalUser, LookupUser } from '../services/user-
 import { FindUser, UpdateUser } from '../database/user-queries.js';
 import { getHandleFromUri, GetOrderedCollectionPage } from '../services/follow-service.js';
 import { createContext, sendFollow, sendNoteToExternalFollowers, sendUnfollow } from '../federation.js';
-import { AddFollower, AddFollowing, getAllUsersFollowersByUserId, getInternalUsersFollowersByUserId, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
+import { AddFollower, AddFollowing, getAllUsersFollowersByUserId, getInternalUsersFollowersByUserId, isFollowing, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
 import type { FileType, Follower, PostData, User } from '../types.js';
 import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js';
 import { nodeInfoToJson, Person } from '@fedify/fedify';
@@ -243,4 +243,39 @@ function getOldestPost(posts : PostData[]){
     }
     return currMin;
 }
+
+UserRouter.get('/platform/users/me/follows/:userHandle', async (req, res, next) => {
+  try {
+    if (!req.user) throw new ValidationError("Authentication required.");
+    if (!RegExp("@.+@.+").test(req.params.userHandle)) {
+      throw new ValidationError("Invalid user handle provided");
+    }
+
+    const currentUser = await FindUser(req.user as Profile);
+    if (!currentUser) throw new NotFoundError("Current user not found.");
+
+    const targetUser = await LookupUser(req.params.userHandle, req);
+    if (!targetUser || !targetUser.id) throw new NotFoundError("Target user not found.");
+
+    const userFollowsTarget = await isFollowing(currentUser.actorId, targetUser.id.href);
+    const targetFollowsUser = await isFollowing(targetUser.id.href, currentUser.actorId);
+
+    res.json({
+      userFollowing: {
+        follower: currentUser.actorId,
+        followee: targetUser.id.href,
+        follows: userFollowsTarget
+      },
+      userFollowedBy: {
+        follower: targetUser.id.href,
+        followee: currentUser.actorId,
+        follows: targetFollowsUser
+      }
+    });
+    next();
+
+  } catch (e) {
+    next(e);
+  }
+});
 
