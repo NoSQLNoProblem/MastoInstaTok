@@ -1,6 +1,6 @@
 import express from "express"
 import { AddComment, GetCommentsForPost, DeleteComment } from "../services/comments-service.js"
-import type { User } from "../types.js" // Assuming User type is here
+import type { User } from "../types.js"
 
 export const CommentsRouter = express.Router()
 
@@ -58,7 +58,6 @@ CommentsRouter.delete("/comments/:commentId", async (req, res) => {
     if (deleted) {
       res.json({ message: "Comment deleted successfully" })
     } else {
-      // This could mean comment not found, or user is not the owner
       res.status(403).json({ error: "Comment not found or you are not authorized to delete it" })
     }
   } catch (error) {
