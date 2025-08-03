@@ -9,7 +9,7 @@ interface UserCardProps {
     username: string
     fullName: string
     bio: string
-    avatar: string
+    avatarURL: string | undefined
     isFollowing: boolean
     followers: number
   }
@@ -30,7 +30,7 @@ export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) 
     <div className={styles.userCard}>
       <div className={styles.userInfo}>
         <div className={styles.avatar}>
-          <img src={user.avatar || placeHolderAvatar} alt={user.username} className={styles.avatarImage} />
+          <img src={user?.avatarURL || placeHolderAvatar} alt={user.username} className={styles.avatarImage} />
         </div>
         <div className={styles.userDetails}>
           <h3 className={styles.username}>{user.username}</h3>
