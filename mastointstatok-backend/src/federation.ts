@@ -7,6 +7,7 @@ import {
   importJwk,
   Follow,
   Person,
+  Image
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
 import type { AcceptObject, Follower, FollowObject} from "./types.js";
@@ -29,6 +30,13 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
   if (!user) return null;
   console.log("This line means that the web finger is making a request to object dispatcher");
 
+  const userIcon = user.avatarURL
+    ? new Image({
+        mediaType: "image/jpeg",
+        url: new URL(user.avatarURL),
+      })
+    : undefined;
+
   return new Person({
     id: new URL(user.actorId),
     preferredUsername: user.username,
@@ -40,6 +48,7 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
     following: ctx.getFollowingUri(identifier),
     publicKeys: (await ctx.getActorKeyPairs(identifier))
       .map(keyPair => keyPair.cryptographicKey),
+    icon: userIcon,
   });
 }).setKeyPairsDispatcher(async (ctx, identifier) => {
   const entry = await kv.get<{rsaKeyPair:{
