@@ -25,7 +25,6 @@ const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za
 
 app.set("trust proxy", true);
 
-app.use(integrateFederation(federation, (req) =>  req.user));
 app.use(express.json())
 
 passport.use(new GoogleStrategy({
@@ -49,5 +48,7 @@ app.use(passport.session());
 app.use("/api", AuthRouter, errorHandler);
 app.use("/api", UserRouter, errorHandler);
 app.use("/api", PostRouter, errorHandler)
+
+app.use(integrateFederation(federation, (req) =>  req.user));
 
 export default app;

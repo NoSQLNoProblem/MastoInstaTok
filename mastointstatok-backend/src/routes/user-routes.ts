@@ -151,7 +151,7 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
     }
 })
 
-UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
+UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
         const mimeType = req.body.fileType;
         if (mimeType !== "image/png" && mimeType !== "image/jpeg" && mimeType !== "video/mp4") {
