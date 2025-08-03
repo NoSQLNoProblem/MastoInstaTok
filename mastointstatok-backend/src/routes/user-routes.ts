@@ -11,6 +11,8 @@ import { nodeInfoToJson, Person } from '@fedify/fedify';
 import { getFollowRecordByActors } from '../database/object-queries.js';
 import { uploadToS3 } from '../lib/s3.js';
 import { getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
+import crypto from 'crypto'
+
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
