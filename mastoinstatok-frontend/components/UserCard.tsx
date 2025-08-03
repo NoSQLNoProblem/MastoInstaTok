@@ -11,6 +11,7 @@ interface UserCardProps {
     bio: string
     avatarURL: string | undefined
     isFollowing: boolean
+    isFollowedBy: boolean
     followers: number
   }
   onFollow: (userId: string) => void
@@ -37,6 +38,7 @@ export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) 
           <p className={styles.fullName}>{user.fullName}</p>
           <p className={styles.fullName}>{user.bio}</p>
           <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
+          {user.isFollowedBy && (<p className={styles.mutualFollow}>Follows you</p>)}
         </div>
       </div>
 

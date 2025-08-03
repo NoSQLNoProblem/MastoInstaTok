@@ -15,6 +15,7 @@ interface User {
   email?: string
   followers: number
   isFollowing: boolean
+  isFollowedBy: boolean
 }
 
 export default function SearchPage() {
@@ -36,26 +37,20 @@ export default function SearchPage() {
       const userData = await apiService.get(`/platform/users/${handle}`)
 
       const followers = await apiService.get(`/platform/users/${handle}/followers`)
-      const me = await apiService.get(`/platform/users/me`)
-      const following = await apiService.get(`/platform/users/${me.fullHandle}/following`)
 
-      console.log(following);
+      const followStatus = await apiService.get(`/platform/users/me/follows/${handle}`)
 
-      const isFollowing = Array.isArray(following.items) && following.items.some((item: any) => {
-          if (!item || !item.actorId) return false
+      const isFollowing = followStatus?.userFollowing?.follows ?? false
 
-          const targetActorId = userData.actorId.replace(/\/$/, "")
-          const itemActorId = item.actorId.replace(/\/$/, "").replace(/\)$/, "")
-
-          return itemActorId === targetActorId
-        })
-
+      const isFollowedBy = followStatus?.userFollowedBy?.follows ?? false
 
       setUser({
         ...userData,
         followers: followers.totalItems ?? 0,
         isFollowing: isFollowing,
+        isFollowedBy: isFollowedBy,
       })
+
     } catch (err: any) {
       console.error(err)
       setError("No users found.")
@@ -137,6 +132,7 @@ export default function SearchPage() {
                       bio: user.bio,
                       avatarURL: user.avatarURL,
                       isFollowing: user.isFollowing,
+                      isFollowedBy: user.isFollowedBy,
                       followers: user.followers,
                     }}
                     onFollow={() => handleFollow()}
