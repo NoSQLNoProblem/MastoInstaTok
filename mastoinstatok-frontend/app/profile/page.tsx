@@ -23,8 +23,10 @@ async function fetchMyPostsApi(offset: number) {
   // const data = await response.json();
   //===========================================
   const data = await apiService.get(
-    `/platform/users/me/posts?cursor=${offset}`
+    `/platform/users/me/posts`
   );
+  console.log(data);
+  
   return { items: data.posts, nextOffset: data.nextCursor };
 }
 

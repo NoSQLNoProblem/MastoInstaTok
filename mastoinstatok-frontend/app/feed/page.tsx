@@ -24,7 +24,7 @@ export async function fetchPostsApi(offset: number) {
 
 
         const data = await apiService.get(
-          `/platform/users/me/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+          `/platform/users/me/feed`
         );
 
   return { items: data.posts, nextOffset: data.nextOffset };
