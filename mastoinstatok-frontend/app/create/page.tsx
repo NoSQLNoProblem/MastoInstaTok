@@ -47,11 +47,36 @@ export default function CreatePage() {
 
     setIsUploading(true);
 
+    console.log(mediaType);
+    
     try {
-      await apiService.post("/posts", {
+      let fileType = "";
+      if (media) {
+        const match = media.match(/^data:(image\/png|image\/jpeg|video\/mp4);base64,/);
+        if (match) {
+          fileType = match[1];
+        } else if (mediaType === "image") {
+          fileType = "image/png";
+        } else if (mediaType === "video") {
+          fileType = "video/mp4";
+        }
+      }
+      if (!fileType || !["image/png", "image/jpeg", "video/mp4"].includes(fileType)) {
+        alert("Only PNG, JPEG, or MP4 files are allowed.");
+        setIsUploading(false);
+        return;
+      }
+
+      // Remove data URL prefix before sending
+      let base64Data = media;
+      const prefixMatch = media.match(/^data:(image\/png|image\/jpeg|video\/mp4);base64,/);
+      if (prefixMatch) {
+        base64Data = media.replace(/^data:(image\/png|image\/jpeg|video\/mp4);base64,/, "");
+      }
+      await apiService.post("/platform/users/me/posts", {
         caption,
-        media,
-        mediaType,
+        data: base64Data,
+        fileType,
       });
       router.push("/feed");
     } catch (error) {
@@ -93,7 +118,7 @@ export default function CreatePage() {
                   <label htmlFor="media-upload" className={styles.uploadLabel}>
                     <div className={styles.uploadIcon}>📷🎬</div>
                     <p>Click to upload an image or video</p>
-                    <p className={styles.uploadHint}>JPG, PNG, GIF, MP4, WEBM up to 10MB</p>
+                    <p className={styles.uploadHint}>JPG, PNG, MP4 up to 10MB</p>
                   </label>
                 </div>
               ) : (

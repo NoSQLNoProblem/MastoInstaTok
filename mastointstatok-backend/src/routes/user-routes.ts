@@ -153,7 +153,7 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
     }
 })
 
-UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
+UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
         console.log("getting the request")
         const mimeType = req.body.fileType;
@@ -207,6 +207,7 @@ UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
     }
 })
 
+
 UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
    const user = await FindUser(req.user as Profile) as User; 
    const followers = await getAllUsersFollowingByUserId(user.actorId);
@@ -233,6 +234,27 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
         nextCursor: (feed.length > 0) ? newCursor : undefined  
    })
 })
+
+UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
+    console.log("here");
+    
+    try {
+        const user = await FindUser(req.user as Profile) as User;
+        const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string);
+        const posts = await getRecentPostsByUserHandle(user.fullHandle, cursor);
+        const sortedPosts = posts.toSorted((a, b) => b.timestamp - a.timestamp);
+        const nextCursor = sortedPosts.length > 0
+            ? sortedPosts[sortedPosts.length - 1].timestamp
+            : undefined;
+        res.json({
+            posts: sortedPosts,
+            nextCursor: (sortedPosts.length > 0) ? nextCursor : undefined
+        });
+    } catch (e) {
+        next(e);
+    }
+});
+
 
 function getOldestPost(posts : PostData[]){
     if(posts.length == 0) return null;

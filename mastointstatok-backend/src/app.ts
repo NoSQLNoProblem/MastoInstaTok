@@ -52,4 +52,6 @@ app.use("/api", AuthRouter, errorHandler);
 app.use("/api", UserRouter, errorHandler);
 app.use("/api", PostRouter, errorHandler)
 
+app.use(integrateFederation(federation, (req) =>  req.user));
+
 export default app;
