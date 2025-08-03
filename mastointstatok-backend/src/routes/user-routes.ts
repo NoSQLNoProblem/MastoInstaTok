@@ -222,7 +222,8 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
    }
    console.log("The feed is");
-   feed.toSorted((a, b)=>{
+
+   feed.sort((a, b)=>{
       return a.timestamp - b.timestamp
    })
 
