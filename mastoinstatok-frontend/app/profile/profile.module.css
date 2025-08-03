@@ -111,6 +111,7 @@
   display: flex;
   gap: 40px;
   margin-bottom: 20px;
+  justify-content: space-evenly;
 }
 
 .stat {
@@ -118,6 +119,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
+  width: 4rem;
 }
 
 .statNumber {
