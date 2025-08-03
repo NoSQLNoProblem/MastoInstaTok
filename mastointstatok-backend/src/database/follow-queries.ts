@@ -62,24 +62,28 @@ export async function getInternalUsersFollowersByUserId(actorId: string, options
     const { cursor, limit } = options
     const lastFollower = (await followersCollection.find({ actorId }).sort({ _id: -1 }).limit(1).toArray())[0];
     let users: WithId<Follower>[];
+    const totalFollowers = await followersCollection.countDocuments({ actorId });
+
     if (cursor == Number.MAX_SAFE_INTEGER.toString()) {
-        users = await followersCollection.find({ actorId }).sort({ _id: -1 }).limit(limit).toArray();
+        const filteredCollection = followersCollection.find({ actorId }).sort({ _id: -1 }); 
+        users = await filteredCollection.limit(limit).toArray();
     }
     else {
-        users = await followersCollection.find({ actorId, _id: { $lt: new ObjectId(cursor) } }).sort({ _id: -1 }).limit(limit).toArray()
+        const filteredCollection = followersCollection.find({ actorId, _id: { $lt: new ObjectId(cursor) } }).sort({ _id: -1 })
+        users = await filteredCollection.limit(limit).toArray()
     }
     return {
         users,
         nextCursor: users[users.length - 1]?._id.toHexString(),
         last: users[users.length - 1]?._id === lastFollower?._id,
-        totalItems : await followersCollection.countDocuments()
+        totalItems : totalFollowers
     }
 }
 
 export async function getInternalUsersFollowingByUserId(actorId: string, options: { cursor: string, limit: 10 }) {
     const { cursor, limit } = options
-    console.log("searching for the followings of", actorId)
     const lastFollowing = (await followingCollection.find({ followerId : actorId }).sort({ _id: -1 }).limit(1).toArray())[0];
+    const totalItems = await followingCollection.countDocuments({ followerId : actorId })
     let users: WithId<Following>[];
     if (cursor == Number.MAX_SAFE_INTEGER.toString()) {
         users = await followingCollection.find({ followerId : actorId }).sort({ _id: -1 }).limit(limit).toArray();
@@ -91,7 +95,7 @@ export async function getInternalUsersFollowingByUserId(actorId: string, options
         users,
         nextCursor: users[users.length - 1]?._id.toHexString(),
         last: users[users.length - 1]?._id === lastFollowing?._id,
-        totalItems : await followersCollection.countDocuments()
+        totalItems
     }
 }
 
