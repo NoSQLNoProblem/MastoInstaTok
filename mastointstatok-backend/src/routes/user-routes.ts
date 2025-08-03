@@ -151,18 +151,17 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
     }
 })
 
-UserRouter.post("/api/platform/users/:userHandle/posts", async (req, res, next) => {
+UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
     try {
         const mimeType = req.body.fileType;
-        if (mimeType !== "png" && mimeType !== "jpeg" && mimeType !== "mp4") {
+        if (mimeType !== "image/png" && mimeType !== "image/jpeg" && mimeType !== "video/mp4") {
             throw new ValidationError();
         }
         const fileData = req.body.data;
         const caption = req.body.caption;
         const user = await FindUser(req.user as Profile) as User; // This assertion is valid because we have passed the authentication middleware
-        
-        const mediaURL = await uploadToS3(fileData, mimeType, `https://bbd-grad-project-mastoinstatok-bucket .s3.af-south-1.amazonaws.com}`,  crypto.randomUUID())
-
+        const mediaURL = await uploadToS3(fileData, mimeType, `bbd-grad-project-mastoinstatok-bucket`,  crypto.randomUUID())
+        console.log("media url is", mediaURL)
         // Create the Post Object
         const post : PostData = {
             id : crypto.randomUUID(),
@@ -179,10 +178,9 @@ UserRouter.post("/api/platform/users/:userHandle/posts", async (req, res, next) 
         await Post(post)
 
         // get the internal and the external followers
-        const followerCursor = getAllUsersFollowersByUserId(user.actorId);
+        const followers = await getAllUsersFollowersByUserId(user.actorId);
         let externalFollowers : Person[] = []
-        while(followerCursor.hasNext()){
-            const follower = await followerCursor.next();
+        for(const follower of followers){
             if (!follower?.actorId) continue;
             if(await isLocalUser(req, getHandleFromUri(follower?.actorId))){
                 // Do nothing since we will fetch the posts of local followers from the db withut concern of what has
@@ -194,24 +192,27 @@ UserRouter.post("/api/platform/users/:userHandle/posts", async (req, res, next) 
                 externalFollowers.push(user);
             }
         }
-        await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, fileData, mediaURL, mimeType == "mp4" ? "video" : "image");
+        if(externalFollowers.length !== 0 ){
+            await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, fileData, mediaURL, mimeType == "mp4" ? "video" : "image");
+        }
+        res.status(202).json({message : "Successfully created post"})
         next();
     }catch(e){
         next(e)
     }
 })
 
-UserRouter.get("/api/platform/users/me/feed", async (req, res, next)=>{
+UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
    const user = await FindUser(req.user as Profile) as User; 
-   const followerCursor = getAllUsersFollowersByUserId(user.actorId);
+   const followers = await getAllUsersFollowersByUserId(user.actorId);
+   console.log("made it here")
    const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
-   const feed : PostData[] = []
+   let feed : PostData[] = []
    const oldestPosts : number[] = []
-   while(followerCursor.hasNext()){
-        const follower = await followerCursor.next();
+   for(const follower of followers){
         if(!follower?.uri) continue;
         const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.uri), cursor);
-        feed.concat(posts);
+        feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
    }
 
@@ -224,10 +225,9 @@ UserRouter.get("/api/platform/users/me/feed", async (req, res, next)=>{
    const newCursor = oldestPosts.reduce((prev, curr)=> curr > prev ? curr : prev)
    res.json({
         posts: feed,
-        nextCursor: newCursor 
+        nextCursor: (feed.length > 0) ? newCursor : undefined  
    })
 })
-
 
 function getOldestPost(posts : PostData[]){
     if(posts.length == 0) return null;

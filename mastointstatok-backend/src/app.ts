@@ -11,6 +11,7 @@ import { CreateUser } from "./services/user-service.js";
 import { UserRouter } from "./routes/user-routes.js";
 import cors from "cors";
 import { errorHandler } from "./middleware/error-middleware.js";
+import { PostRouter } from "./routes/post-routes.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -47,5 +48,6 @@ app.use(passport.session());
 
 app.use("/api", AuthRouter, errorHandler);
 app.use("/api", UserRouter, errorHandler);
+app.use("/api", PostRouter, errorHandler)
 
 export default app;

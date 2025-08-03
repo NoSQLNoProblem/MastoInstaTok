@@ -304,22 +304,6 @@ federation.setObjectDispatcher(Note,
   }
 )
 
-federation.setObjectDispatcher(Note,
-  "/users/{userId}/notes/{noteId}",
-  async (ctx, { userId, noteId }) => {
-    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/notes/${noteId}`);
-    const noteObject: NoteObject | null = await getNoteRecord(id);
-    if (!noteObject) return null;
-    return new Note({
-      id: new URL(noteObject.id),
-      attribution: ctx.getActorUri(noteObject.senderId),
-      to: PUBLIC_COLLECTION,
-      cc: ctx.getFollowersUri(noteObject.senderId),
-      content: noteObject.content,
-      attachments : [new URL(noteObject.attachmentUrl)]
-    })
-  }
-)
 
 federation.setObjectDispatcher(Image,
   "/users/{userId}/images/{imageId}",

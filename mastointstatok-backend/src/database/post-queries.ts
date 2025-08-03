@@ -16,6 +16,6 @@ export async function getPostById(id : string){
     return await postsCollection.findOne<PostData>( { id } )
 }
 
-export async function getRecentPostsByUserHandle(userHandle : string, timestamp : number){
-    return postsCollection.find<PostData>({userHandle, $gt:timestamp}).limit(5).toArray()
+export async function getRecentPostsByUserHandle(userHandle : string, cursorTimestamp : number){
+    return postsCollection.find<PostData>({userHandle, timestamp:{$lt:cursorTimestamp}}).limit(5).toArray()
 }
