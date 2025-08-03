@@ -18,9 +18,15 @@ export default function CreatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert("File size must be 10MB or less.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
       const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : null;
       if (!type) return;
       setMediaType(type);
