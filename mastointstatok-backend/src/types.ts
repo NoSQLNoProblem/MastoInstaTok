@@ -12,7 +12,7 @@ export type User = {
   };
 
 export type Follower = {
-  uri : string,
+  followerId : string,
   inboxUri : string,
   actorId : string
 }

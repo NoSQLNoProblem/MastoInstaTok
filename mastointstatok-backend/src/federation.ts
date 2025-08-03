@@ -92,7 +92,7 @@ federation
         { cursor, limit: 10 }
       );
       const items: Recipient[] = users.map((actor: Follower) => ({
-        id: new URL(actor.uri),
+        id: new URL(actor.followerId),
         inboxId: new URL(actor.inboxUri),
         endpoints: {
           sharedInbox: actor.inboxUri ? new URL(actor.inboxUri) : null,
