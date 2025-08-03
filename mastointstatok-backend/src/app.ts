@@ -10,6 +10,7 @@ import 'dotenv/config'
 import { CreateUser } from "./services/user-service.js";
 import { UserRouter } from "./routes/user-routes.js";
 import cors from "cors";
+import { errorHandler } from "./middleware/error-middleware.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -44,7 +45,7 @@ app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: fals
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use("/api", AuthRouter);
-app.use("/api", UserRouter);
+app.use("/api", AuthRouter, errorHandler);
+app.use("/api", UserRouter, errorHandler);
 
 export default app;

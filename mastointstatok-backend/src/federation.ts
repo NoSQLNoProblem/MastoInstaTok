@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { Accept, Endpoints, InProcessMessageQueue, type Context, type Recipient } from "@fedify/fedify";
+import { Accept, Image, Create, Endpoints, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video } from "@fedify/fedify";
 import {
   createFederation,
   exportJwk,
@@ -9,11 +9,12 @@ import {
   Person,
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import type { AcceptObject, Follower, FollowObject} from "./types.js";
+import type { AcceptObject, Follower, FollowObject } from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
 import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
-import { getAcceptRecord, getFollowRecord, insertAcceptRecord, insertFollowRecord } from "./database/object-queries.js";
+import { getAcceptRecord, getFollowRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
+import { ValidationError } from "./lib/errors.js";
 
 const logger = getLogger("mastointstatok-backend");
 
@@ -35,21 +36,23 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
-    endpoints: new Endpoints({sharedInbox: ctx.getInboxUri()}),
+    endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
     summary: user.bio,
     following: ctx.getFollowingUri(identifier),
     publicKeys: (await ctx.getActorKeyPairs(identifier))
       .map(keyPair => keyPair.cryptographicKey),
   });
 }).setKeyPairsDispatcher(async (ctx, identifier) => {
-  const entry = await kv.get<{rsaKeyPair:{
-    privateKey: JsonWebKey
-    publicKey: JsonWebKey
-  },
-  edKeyPair:{
-    privateKey: JsonWebKey
-    publicKey: JsonWebKey
-  }}>(["key", identifier]);
+  const entry = await kv.get<{
+    rsaKeyPair: {
+      privateKey: JsonWebKey
+      publicKey: JsonWebKey
+    },
+    edKeyPair: {
+      privateKey: JsonWebKey
+      publicKey: JsonWebKey
+    }
+  }>(["key", identifier]);
   if (entry == null) {
     const { privateKey: rsaPrivKey, publicKey: rsaPubKey } =
       await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
@@ -59,22 +62,24 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
 
     await kv.set(
       ["key", identifier],
-      {rsaKeyPair: {
-        privateKey: await exportJwk(rsaPrivKey),
-        publicKey: await exportJwk(rsaPubKey),
-      },edKeyPair: {
-        privateKey: await exportJwk(edPrivKey),
-        publicKey: await exportJwk(edPubKey),
-      }}
+      {
+        rsaKeyPair: {
+          privateKey: await exportJwk(rsaPrivKey),
+          publicKey: await exportJwk(rsaPubKey),
+        }, edKeyPair: {
+          privateKey: await exportJwk(edPrivKey),
+          publicKey: await exportJwk(edPubKey),
+        }
+      }
     );
-    return [{ privateKey: rsaPrivKey, publicKey: rsaPubKey }, {privateKey: edPrivKey, publicKey: edPubKey}];
+    return [{ privateKey: rsaPrivKey, publicKey: rsaPubKey }, { privateKey: edPrivKey, publicKey: edPubKey }];
   }
   const rsaPrivateKey = await importJwk(entry.rsaKeyPair.privateKey, "private");
   const rsaPublicKey = await importJwk(entry.rsaKeyPair.publicKey, "public");
   const edPrivateKey = await importJwk(entry.edKeyPair.privateKey, "private");
   const edPublicKey = await importJwk(entry.edKeyPair.publicKey, "public");
 
-  return [{ privateKey : rsaPrivateKey, publicKey:rsaPublicKey}, { privateKey : edPrivateKey, publicKey:edPublicKey}];
+  return [{ privateKey: rsaPrivateKey, publicKey: rsaPublicKey }, { privateKey: edPrivateKey, publicKey: edPublicKey }];
 })
 
 federation
@@ -90,7 +95,7 @@ federation
         id: new URL(actor.uri),
         inboxId: new URL(actor.inboxUri),
         endpoints: {
-                    sharedInbox: actor.inboxUri ? new URL(actor.inboxUri) : null,
+          sharedInbox: actor.inboxUri ? new URL(actor.inboxUri) : null,
         },
       }));
       return { items, nextCursor: last ? null : nextCursor };
@@ -100,16 +105,16 @@ federation
 
 
 federation
-  .setFollowingDispatcher("/api/users/{identifier}/follows", 
+  .setFollowingDispatcher("/api/users/{identifier}/follows",
     async (ctx, identifier, cursor) => {
-    if (cursor == null) return null;
-    const { users: followings, nextCursor, last } = await getInternalUsersFollowingByUserId(
-      identifier,
-      { cursor, limit: 10 }
-    );
-    const items = followings.map(following => new URL(following.followeeId));
-    return { items, nextCursor: last ? null : nextCursor }
-  })
+      if (cursor == null) return null;
+      const { users: followings, nextCursor, last } = await getInternalUsersFollowingByUserId(
+        identifier,
+        { cursor, limit: 10 }
+      );
+      const items = followings.map(following => new URL(following.followeeId));
+      return { items, nextCursor: last ? null : nextCursor }
+    })
   .setFirstCursor(async (ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
 federation
@@ -131,17 +136,17 @@ federation
       { identifier: parsed.identifier },
       follower,
       new Accept({
-         id : new URL(`${ctx.canonicalOrigin}/${follow.objectId}/accepts/${resourceGUID}`),
-         actor: follow.objectId, 
-         object: follow, 
-         to: follow.actorId 
+        id: new URL(`${ctx.canonicalOrigin}/${follow.objectId}/accepts/${resourceGUID}`),
+        actor: follow.objectId,
+        object: follow,
+        to: follow.actorId
       }),
     );
     insertAcceptRecord({
-         id : new URL(`${ctx.canonicalOrigin}/${follow.objectId}/accepts/${resourceGUID}`),
-         actor: follow.objectId, 
-         object: follow, 
-         to: follow.actorId  
+      id: new URL(`${ctx.canonicalOrigin}/${follow.objectId}/accepts/${resourceGUID}`),
+      actor: follow.objectId,
+      object: follow,
+      to: follow.actorId
     })
     AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
   });
@@ -149,9 +154,9 @@ federation
 federation.setObjectDispatcher(
   Accept,
   "/users/{userId}/accept/{acceptId}",
-  async (ctx, {userId, acceptId} ) => {
+  async (ctx, { userId, acceptId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${acceptId}`);
-    const acceptObject : AcceptObject | null = await getAcceptRecord(id);
+    const acceptObject: AcceptObject | null = await getAcceptRecord(id);
     if (!acceptObject) return null;
     return new Accept({
       id: acceptObject.id,
@@ -162,12 +167,12 @@ federation.setObjectDispatcher(
   }
 );
 
-federation.setObjectDispatcher(Follow, 
+federation.setObjectDispatcher(Follow,
   "/users/{userId}/follows/{followId}",
   async (ctx, { userId, followId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${followId}`);
-    const followObject : FollowObject | null = await getFollowRecord(id); 
-    if(!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
+    const followObject: FollowObject | null = await getFollowRecord(id);
+    if (!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
     return new Follow({
       id: new URL(followObject?.id),
       actor: new URL(followObject?.actor),
@@ -176,7 +181,21 @@ federation.setObjectDispatcher(Follow,
   }
 )
 
-export function createContext(request:Request){
+federation.setObjectDispatcher(Undo,
+  "/users/{userId}/undos/{undoId}",
+  async (ctx, { userId, undoId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${undoId}`);
+    const followObject: FollowObject | null = await getUndoRecord(id);
+    if (!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
+    return new Undo({
+      id: new URL(followObject?.id),
+      actor: new URL(followObject?.actor),
+      object: new URL(followObject?.object)
+    });
+  }
+)
+
+export function createContext(request: Request) {
   const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
   console.log("CONEXT URL: " + url);
   return federation.createContext(new URL(url), undefined);
@@ -188,14 +207,14 @@ export async function sendFollow(
   recipient: Recipient,
 ) {
   const resourceGUID = crypto.randomUUID().split("-")[0]
-  if(!recipient || !recipient.id) return false;
+  if (!recipient || !recipient.id) return false;
 
   const sender = ctx.parseUri(new URL(senderId));
-  if(sender?.type !== "actor"){
+  if (sender?.type !== "actor") {
     return false;
   }
   await ctx.sendActivity(
-    { identifier: sender.identifier},
+    { identifier: sender.identifier },
     recipient,
     new Follow({
       id: new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/follows/${resourceGUID}`),
@@ -207,10 +226,111 @@ export async function sendFollow(
   insertFollowRecord({
     id: `${ctx.canonicalOrigin}/users/${senderId}/follows/${resourceGUID}`,
     actor: ctx.getActorUri(sender.identifier).href,
-    object: recipient.id.href, 
+    object: recipient.id.href,
   })
 
   return true;
+}
+
+export async function sendUnfollow(
+  ctx: Context<unknown>,
+  senderId: string,
+  recipient: Recipient,
+  followObject: FollowObject,
+) {
+  if (!followObject || !followObject.id) throw new ValidationError();
+  if (!recipient.id) throw new ValidationError;
+  const sender = ctx.parseUri(new URL(senderId));
+  const resourceGUID = crypto.randomUUID().split("-")[0]
+
+  if (sender?.type !== "actor") {
+    return false;
+  }
+  await ctx.sendActivity(
+    { identifier: sender.identifier },
+    recipient,
+    new Undo({
+      id: new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/undos/${resourceGUID}`),
+      actor: ctx.getActorUri(sender.identifier),
+      object: new URL(followObject.id),
+    }),
+  );
+
+  insertUndoRecord({
+    id: `${ctx.canonicalOrigin}/users/${senderId}/undos/${resourceGUID}`,
+    actor: ctx.getActorUri(sender.identifier).href,
+    object: recipient.id.href,
+  })
+  return true;
+}
+
+export async function sendNoteToFollowers(
+  ctx: Context<unknown>,
+  senderId: string,
+  recipients: Recipient,
+  content: string,
+  attachmentUrl: string,
+  attachmentType: "video" | "image"
+) {
+  const createResourceGUID = crypto.randomUUID().split("-")[0]
+  const noteResourceGUID = crypto.randomUUID().split("-")[0]
+  const imageResourceGUID = crypto.randomUUID().split("-")[0]
+  const sender = ctx.parseUri(new URL(senderId));
+  if (sender?.type !== "actor") {
+    throw new ValidationError();
+  }
+
+  const noteId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/notes/${noteResourceGUID}`);
+  const attachmentId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/images/${noteResourceGUID}`)
+  const createId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/creates/${createResourceGUID}`)
+
+  const attachments = attachmentType == "image" ? [new Image({
+    id: attachmentId,
+    url: new URL(attachmentUrl),
+  })] : [new Video({
+    id: new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/videos/${noteResourceGUID}`),
+    url: new URL(attachmentUrl),
+  })]
+
+  const note: Note = new Note({
+    id: noteId,
+    attribution: ctx.getActorUri(senderId),
+    to: PUBLIC_COLLECTION,
+    cc: ctx.getFollowersUri(senderId),
+    content,
+    attachments: attachments
+  })
+
+  const create = new Create({
+    id: createId,
+    actor: ctx.getActorUri(senderId),
+    object: note,
+  })
+
+  // write all the objects to the db for retrieval later
+  insertAttachmentRecord({
+    id : attachments[0].id as URL,
+    url : attachments[0].url as URL
+  })
+
+  insertNoteRecord({
+    attachmentUrl : note.attachmentIds[0].href,
+    content : content,
+    id: noteId.href,
+    senderId: senderId
+  });
+
+  insertCreateRecord({
+    actor: (create.actorId as URL).href,
+    id : (create.id as URL).href,
+    object: note
+  })
+
+  await ctx.sendActivity(
+    { identifier: senderId },
+    recipients,
+    create
+  );
 }
 
 export default federation;
