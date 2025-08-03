@@ -10,7 +10,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { nodeInfoToJson, Person } from '@fedify/fedify';
 import { getFollowRecordByActors } from '../database/object-queries.js';
 import { uploadToS3 } from '../lib/s3.js';
-import { getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
+import { countPostsByUserHandle, getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
 import crypto from 'crypto'
 
 export const UserRouter = express.Router();
@@ -279,3 +279,13 @@ UserRouter.get('/platform/users/me/follows/:userHandle', async (req, res, next) 
   }
 });
 
+UserRouter.get('/platform/users/me/posts/count', async (req, res, next) => {
+  try {
+    const user = await FindUser(req.user as Profile);
+    if (!user) throw new NotFoundError("Current user not found.");
+    const postCount = await countPostsByUserHandle(user.fullHandle);
+    return res.json({ count: postCount });
+  } catch (e) {
+    next(e);
+  }
+});

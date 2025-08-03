@@ -8,12 +8,11 @@ import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePagination } from "@/hooks/usePagination";
 import { PostData } from "@/types/post";
-import { UserProfile } from "@/types/profile";
 import { apiService } from "@/services/apiService";
 
-const PAGE_SIZE = 6; // Number of posts to show per page
-async function fetchPostsApi(offset: number) {
-  // THIS IS FOR TESTING VIA MOCKS
+const PAGE_SIZE = 6;
+async function fetchMyPostsApi(offset: number) {
+// THIS IS FOR TESTING VIA MOCKS
   //==========================================
   // const response = await fetch(
   //   `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
@@ -23,17 +22,16 @@ async function fetchPostsApi(offset: number) {
   // );
   // const data = await response.json();
   //===========================================
-
   const data = await apiService.get(
-    `/me?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+    `/platform/users/me/posts?cursor=${offset}`
   );
-
-  return { items: data.posts, nextOffset: data.nextOffset };
+  return { items: data.posts, nextOffset: data.nextCursor };
 }
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  //will need to use UserPost when fetching real posts
+  const [followersCount, setFollowersCount] = useState<string>("--");
+  const [followingCount, setFollowingCount] = useState<string>("--");
+  const [postCount, setPostCount] = useState<string>("--");
   const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -44,51 +42,59 @@ export default function ProfilePage() {
     error,
     offset,
     fetchNext,
-    reset,
-  } = usePagination<PostData>(fetchPostsApi);
+  } = usePagination<PostData>(fetchMyPostsApi);
 
-  // Check authentication and get username
   useEffect(() => {
-    if (isLoading) return; // Wait for loading to finish
-    if (!isAuthenticated) {
-      router.push("/auth");
-      return;
-    }
-
-    // Generate mock profile data
-    const profile: UserProfile = {
-      username: user?.displayName || "",
-      fullHandle: `@${user?.email}`,
-      bio: user?.bio || "",
-      posts: 24,
-      followers: 1250,
-      following: 180,
-      avatar: user?.avatarURL || "/placeholder-user.jpg",
-      fullName: user?.displayName || "",
+    const fetchProfileStats = async () => {
+      if (isAuthenticated && user?.fullHandle) {
+        try {
+          const [followersRes, followingRes, postsRes] = await Promise.all([
+            apiService.get(`/platform/users/${user.fullHandle}/followers`),
+            apiService.get(`/platform/users/${user.fullHandle}/following`),
+            apiService.get(`/platform/users/me/posts/count`)
+          ]);
+          setFollowersCount(followersRes.totalItems?.toString() || "0");
+          setFollowingCount(followingRes.totalItems?.toString() || "0");
+          setPostCount(postsRes.count?.toString() || "0");
+        } catch (err) {
+          console.error("Failed to fetch profile stats:", err);
+          setFollowersCount("0");
+          setFollowingCount("0");
+          setPostCount("0");
+        }
+      }
     };
-    setProfile(profile);
-  }, [isAuthenticated, isLoading, user, router]);
+    fetchProfileStats();
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
-    fetchNext();
+    if (isAuthenticated) {
+        fetchNext();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  }, [isAuthenticated]);
+  
   useEffect(() => {
     const handleScroll = () => {
       if (
         window.innerHeight + document.documentElement.scrollTop >=
           document.documentElement.offsetHeight - 1000 &&
         offset !== -1 &&
-        !postsLoading // Prevent double fetch
+        !postsLoading
       ) {
         fetchNext();
       }
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [offset, fetchNext, postsLoading]);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
 
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -98,7 +104,7 @@ export default function ProfilePage() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className={styles.container}>
         <Navigation />
@@ -112,23 +118,9 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) {
-    return (
-      <div className={styles.container}>
-        <Navigation />
-        <main className={styles.main}>
-          <div className={styles.error}>
-            <p>Profile not found</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.container}>
       <Navigation />
-
       <main className={styles.main}>
         <div className={styles.profileContainer}>
           {/* Profile Header */}
@@ -136,39 +128,36 @@ export default function ProfilePage() {
             <div className={styles.avatarSection}>
               <div className={styles.avatar}>
                 <img
-                  src={profile.avatar || "/placeholder.svg"}
-                  alt={profile.username}
+                  src={user?.avatarURL || "/placeholder.svg"}
+                  alt={user?.displayName || "User"}
                   className={styles.avatarImage}
                 />
               </div>
             </div>
-
             <div className={styles.profileInfo}>
               <div className={styles.usernameRow}>
-                <h1 className={styles.username}>{profile.username}</h1>
+                <h1 className={styles.username}>{user?.displayName}</h1>
                 <button className={styles.editButton}>Edit Profile</button>
               </div>
 
               <div className={styles.stats}>
                 <div className={styles.stat}>
-                  <span className={styles.statNumber}>{profile.posts}</span>
+                  <span className={styles.statNumber}>{postCount}</span>
                   <span className={styles.statLabel}>posts</span>
                 </div>
                 <div className={styles.stat}>
-                  <span className={styles.statNumber}>
-                    {profile.followers.toLocaleString()}
-                  </span>
+                  <span className={styles.statNumber}>{followersCount}</span>
                   <span className={styles.statLabel}>followers</span>
                 </div>
                 <div className={styles.stat}>
-                  <span className={styles.statNumber}>{profile.following}</span>
+                  <span className={styles.statNumber}>{followingCount}</span>
                   <span className={styles.statLabel}>following</span>
                 </div>
               </div>
 
               <div className={styles.bio}>
-                <p className={styles.fullHandle}>{profile.fullHandle}</p>
-                <p className={styles.bioText}>{profile.bio}</p>
+                <p className={styles.fullHandle}>{user?.fullHandle}</p>
+                <p className={styles.bioText}>{user?.bio}</p>
               </div>
             </div>
           </header>
@@ -178,7 +167,6 @@ export default function ProfilePage() {
             <div className={styles.postsHeader}>
               <h2 className={styles.postsTitle}>Posts</h2>
             </div>
-
             {posts.length === 0 ? (
               <div className={styles.noPosts}>
                 <div className={styles.noPostsIcon}>📷</div>
@@ -200,12 +188,9 @@ export default function ProfilePage() {
                     onClick={() => setSelectedPost(post)}
                   >
                     {post.mediaType === "video" ? (
-                      <video
-                        controls
-                        className={styles.postImage}
-                      >
-                        <source src={post.mediaURL + "#t=1"} type="video/mp4" />
-                      </video>
+                       <video className={styles.postImage}>
+                           <source src={post.mediaURL + "#t=1"} type="video/mp4" />
+                       </video>
                     ) : (
                       <img
                         src={post.mediaURL || "/placeholder.svg"}
@@ -213,7 +198,6 @@ export default function ProfilePage() {
                         className={styles.postImage}
                       />
                     )}
-
                     <div className={styles.postOverlay}>
                       <div className={styles.postStats}>
                         <span className={styles.postLikes}>
@@ -244,11 +228,8 @@ export default function ProfilePage() {
             </button>
             <div className={styles.modalImage}>
               {selectedPost?.mediaType === "video" ? (
-                <video
-                  controls
-                  
-                >
-                    <source src={selectedPost?.mediaURL + "#t=11"} type="video/mp4" />
+                <video controls autoPlay={false}>
+                    <source src={selectedPost?.mediaURL} type="video/mp4" />
                 </video>
               ) : (
                 <img
@@ -261,12 +242,12 @@ export default function ProfilePage() {
               <div className={styles.modalHeader}>
                 <div className={styles.modalUser}>
                   <img
-                    src={profile.avatar || "/placeholder.svg"}
-                    alt={profile.username}
+                    src={user?.avatarURL || "/placeholder.svg"}
+                    alt={user?.displayName || ""}
                     className={styles.modalAvatar}
                   />
                   <span className={styles.modalUsername}>
-                    {profile.username}
+                    {user?.displayName}
                   </span>
                 </div>
                 <span className={styles.modalDate}>
