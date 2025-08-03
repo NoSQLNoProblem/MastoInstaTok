@@ -1,8 +1,4 @@
-// aiFE/services/apiService.ts
-
-// const BASE_URL = 'https://bbd-grad-project.co.za/api';
-
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = 'https://bbd-grad-project.co.za/api';
 
 /**
  * A wrapper around the native fetch API for session-based authentication.

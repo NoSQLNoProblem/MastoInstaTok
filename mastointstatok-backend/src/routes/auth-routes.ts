@@ -1,6 +1,5 @@
 import passport, { type Profile } from 'passport';
 import express from 'express';
-import { FindUser } from '../database/user-queries.js';
 export const AuthRouter = express.Router();
 
 AuthRouter.get('/auth/google',
@@ -9,7 +8,7 @@ AuthRouter.get('/auth/google',
 
 AuthRouter.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => res.redirect('http://localhost:3000/auth/callback')
+  (req, res) => res.redirect('/auth/callback')
 );
 
 AuthRouter.post('/auth/logout', (req, res, next) => {
