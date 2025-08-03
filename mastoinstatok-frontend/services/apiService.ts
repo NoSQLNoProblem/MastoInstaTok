@@ -39,5 +39,7 @@ async function fetcher(endpoint: string, options: RequestInit = {}): Promise<any
 export const apiService = {
   get: (endpoint: string, options?: RequestInit) => fetcher(endpoint, { ...options, method: 'GET' }),
   post: (endpoint: string, body?: any, options?: RequestInit) => fetcher(endpoint, { ...options, method: 'POST', body: body ? JSON.stringify(body) : null, headers: { 'Content-Type': 'application/json', ...options?.headers } }),
-// add delete, put, patch here
+  delete: (endpoint: string, options?: RequestInit) => fetcher(endpoint, { ...options, method: 'DELETE', headers: { 'Content-Type': 'application/json', ...options?.headers, }, }),
+  put: (endpoint: string, body?: any, options?: RequestInit) => fetcher(endpoint, { ...options, method: 'PUT', body: body ? JSON.stringify(body) : null, headers: { 'Content-Type': 'application/json', ...options?.headers, }, }),
+  patch: (endpoint: string, body?: any, options?: RequestInit) => fetcher(endpoint, { ...options, method: 'PATCH', body: body ? JSON.stringify(body) : null, headers: { 'Content-Type': 'application/json', ...options?.headers, }, }),
 };
