@@ -18,6 +18,8 @@ export default function CreatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
+  // Maximum file size for uploads
+  // will need to adjust for videos
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
