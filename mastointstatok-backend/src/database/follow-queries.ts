@@ -106,3 +106,8 @@ export async function isFollowing(followerId: string, followeeId: string): Promi
   });
   return !!followRelationship; 
 }
+
+export function getAllUsersFollowingByUserId(actorId: string) {
+    return followingCollection.find({followerId: actorId}).toArray()
+}
+
