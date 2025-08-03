@@ -30,7 +30,7 @@ resource "aws_s3_bucket" "mastoinstatok_bucket" {
 }
 
 resource "aws_s3_bucket_public_access_block" "public_access" {
-  bucket = aws_s3_bucket.public_bucket.id
+  bucket = aws_s3_bucket.mastoinstatok_bucket.id
 
   block_public_acls       = false
   block_public_policy     = false
