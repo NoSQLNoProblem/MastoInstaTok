@@ -5,10 +5,11 @@ import { FindUser, UpdateUser } from '../database/user-queries.js';
 import { GetOrderedCollectionPage } from '../services/follow-service.js';
 import { createContext, sendFollow, sendUnfollow } from '../federation.js';
 import { AddFollower, AddFollowing, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
-import type { User } from '../types.js';
+import type { FileType, PostData, User } from '../types.js';
 import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js';
 import { nodeInfoToJson } from '@fedify/fedify';
 import { getFollowRecordByActors } from '../database/object-queries.js';
+import { uploadToS3 } from '../lib/s3.js';
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
@@ -138,7 +139,7 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
         }
         else {
             // Get the follower object corresponding to the sender and recipient
-            if(!followObject) throw new NotFoundError();
+            if (!followObject) throw new NotFoundError();
             await sendUnfollow(ctx, user.actorId, recipient, followObject);
             res.status(204).json({ "message": "Successfully deleted the user" });
             next()
@@ -146,5 +147,41 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
     } catch (e) {
         next(e);
     }
+})
+
+UserRouter.post("/api/platform/users/:userHandle/posts", async (req, res, next) => {
+    try {
+        const mimeType = req.body.fileType;
+        if (mimeType !== "png" && mimeType !== "jpeg" && mimeType !== "mp4") {
+            throw new ValidationError();
+        }
+        const fileData = req.body.data;
+        const caption = req.body.caption;
+        const user = await FindUser(req.user as Profile) as User; // This assertion is valid because we have passed the authentication middleware
+        
+        const mediaURL = await uploadToS3(fileData, mimeType, `https://bbd-grad-project-mastoinstatok-bucket .s3.af-south-1.amazonaws.com}`,  crypto.randomUUID())
+
+        // Create the Post Object
+        const post : PostData = {
+            id : crypto.randomUUID(),
+            caption,
+            fileType: mimeType,
+            isLiked : false,
+            mediaType : mimeType == "mp4" ? "video" : "image",
+            likes : 0,
+            userHandle : user.fullHandle,
+            mediaURL,
+            timestamp : Date.now().toString(),
+        }
+
+        // let the followers know that someone has posted
+        // add the dispatchers for those other types
+        // write the endpoint to retrieve a post
+    
+    }catch(e){
+        next(e)
+    }
+    
+
 })
 

@@ -1,10 +1,12 @@
 {
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.859.0",
     "@dotenvx/dotenvx": "^1.14.1",
     "@fedify/express": "^0.2.1",
     "@fedify/fedify": "^1.7.7",
     "@logtape/logtape": "^0.8.2",
+    "aws-sdk": "^2.1692.0",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^17.2.1",

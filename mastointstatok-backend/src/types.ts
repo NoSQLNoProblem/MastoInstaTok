@@ -1,4 +1,4 @@
-import type { Follow } from "@fedify/fedify";
+import type { Follow, Note } from "@fedify/fedify";
 
 export type User = {
     googleId ?: string,
@@ -40,3 +40,35 @@ export type UndoObject = {
   actor: string,
   object : string
 }
+
+export type PostData =  {
+  id: string;
+  userHandle: string;
+  mediaURL: string;
+  mediaType: "image" | "video";
+  fileType : FileType;
+  caption: string;
+  likes: number;
+  isLiked: boolean;
+  timestamp: string;
+}
+
+export type NoteObject = {
+  id: string;
+  senderId : string;
+  content : string;
+  attachmentUrl : string;
+}
+
+export type Attachment = {
+  id : URL,
+  url : URL
+}
+
+export type CreateObject = {
+  id: string,
+  actor: string,
+  object: Note
+}
+
+export type FileType =  "png" | "jpeg" | "mp4"
