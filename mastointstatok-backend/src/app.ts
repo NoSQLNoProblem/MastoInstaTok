@@ -17,6 +17,8 @@ const logger = getLogger("mastointstatok-backend");
 
 export const app = express();
 
+
+
 const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za'];
     app.use(cors({
       origin: allowedOrigins,
@@ -26,7 +28,7 @@ const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za
 app.set("trust proxy", true);
 
 app.use(integrateFederation(federation, (req) =>  req.user));
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID ?? "",

@@ -1,13 +1,13 @@
 import { Link, Person, type Actor, type OrderedCollection, type OrderedCollectionPage } from "@fedify/fedify";
 import { createContext } from "../federation.js";
 import { type Request } from "express";
-import type { User } from "../types.js";
+import type { Following, User } from "../types.js";
 import { isLocalUser, LookupUser } from "./user-service.js";
-import { getInternalUsersFollowersByUserId } from "../database/follow-queries.js";
+import { getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "../database/follow-queries.js";
 import { getMaxObjectId } from "../lib/mongo.js";
 import { FindUserByUri } from "../database/user-queries.js";
 
-export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null,  next?: string) {
+export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null,  next?: string, isFollowing ?: boolean) {
     
     const ctx = createContext(request);
     let collectionPage;
@@ -22,12 +22,18 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
             cursor = splitNext[splitNext.length - 1];
         }
         if(!actor.id) return []
-        const followersCollection = await getInternalUsersFollowersByUserId(actor.id.href, {cursor: cursor, limit: 10})
+        let collection
+        if(!isFollowing){
+            collection = await getInternalUsersFollowersByUserId(actor.id.href, {cursor: cursor, limit: 10})
+        }else{
+            collection = await getInternalUsersFollowingByUserId (actor.id.href, {cursor: cursor, limit: 10})
+        }
+
         const baseUri = getBaseUri(request);
         console.log("BASE URL: " + baseUri);
         return {
-            items : await Promise.all(followersCollection.users.map(async (follower) => {
-                const user = await LookupUser(getHandleFromUri(follower.uri), request);
+            items : await Promise.all(collection.users.map(async (actor) => {
+                const user = await LookupUser(getHandleFromUri(isFollowing ? (actor as Following).followeeId : actor.followerId), request);
                 if(!user || !user.id) return;
                 return {
                     actorId: user.id.href,
@@ -37,8 +43,8 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
                 }
             }
             )),
-            next: `${baseUri}${cursor ? `?next=${followersCollection.nextCursor ?? ''}` : ''}`,
-            totalItems: followersCollection.totalItems
+            next: `${baseUri}${cursor ? `?next=${collection.nextCursor ?? ''}` : ''}`,
+            totalItems: collection.totalItems
         }
     }
 

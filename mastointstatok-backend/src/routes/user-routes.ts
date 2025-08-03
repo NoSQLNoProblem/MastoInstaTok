@@ -11,6 +11,8 @@ import { nodeInfoToJson, Person } from '@fedify/fedify';
 import { getFollowRecordByActors } from '../database/object-queries.js';
 import { uploadToS3 } from '../lib/s3.js';
 import { getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
+import crypto from 'crypto'
+
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
@@ -63,6 +65,7 @@ UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
         if (!RegExp("@.+@.+").test(req.params.user)) {
             throw new ValidationError();
         }
+        console.log("Made it out alive")
         const user = await LookupUser(req.params.user, req)
         if (!user || !user.followersId) throw new NotFoundError();
         res.json(await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []);
@@ -80,7 +83,7 @@ UserRouter.get('/platform/users/:user/following', async (req, res, next) => {
         }
         const user = await LookupUser(req.params.user, req)
         if (!user || !user.followingId) throw new NotFoundError();
-        res.json(await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined) ?? []);
+        res.json(await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined, true) ?? []);
     } catch (e) {
         next(e)
     }
@@ -187,7 +190,7 @@ UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
                 // been posted
                 continue;
             }else{
-                const user = await LookupUser(getHandleFromUri(follower.uri), req);
+                const user = await LookupUser(getHandleFromUri(follower.followerId), req);
                 if (!user) continue;
                 externalFollowers.push(user);
             }
@@ -210,9 +213,9 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
    let feed : PostData[] = []
    const oldestPosts : number[] = []
    for(const follower of followers){
-        if(!follower?.uri) continue;
+        if(!follower?.followerId) continue;
         console.log(cursor);
-        const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.uri), cursor);
+        const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followerId), cursor);
         feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
    }
