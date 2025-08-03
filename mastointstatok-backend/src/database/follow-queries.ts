@@ -96,3 +96,11 @@ export async function getInternalUsersFollowingByUserId(actorId: string, options
 export function getAllUsersFollowersByUserId(actorId: string) {
     return followersCollection.find({actorId}).toArray()
 }
+
+export async function isFollowing(followerId: string, followeeId: string): Promise<boolean> {
+  const followRelationship = await followingCollection.findOne({
+    followerId: followerId, 
+    followeeId: followeeId, 
+  });
+  return !!followRelationship; 
+}
