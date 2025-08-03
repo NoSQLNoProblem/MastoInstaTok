@@ -8,7 +8,7 @@ const followingCollection = db.collection<Following>('following');
 
 export async function AddFollower(actorId: string, followerId: string, followerInbox: string) {
     const followerToInsert: Follower = {
-        uri: followerId, 
+        followerId: followerId, 
         inboxUri: followerInbox,
         actorId: actorId
     }
@@ -21,7 +21,7 @@ export async function AddFollower(actorId: string, followerId: string, followerI
 
 export async function RemoveFollower(actorId: string, followerId: string, followerInbox: string) {
     const followerToInsert: Follower = {
-        uri: followerId,
+        followerId: followerId,
         inboxUri: followerInbox,
         actorId: actorId
     }
@@ -78,6 +78,7 @@ export async function getInternalUsersFollowersByUserId(actorId: string, options
 
 export async function getInternalUsersFollowingByUserId(actorId: string, options: { cursor: string, limit: 10 }) {
     const { cursor, limit } = options
+    console.log("searching for the followings of", actorId)
     const lastFollowing = (await followingCollection.find({ followerId : actorId }).sort({ _id: -1 }).limit(1).toArray())[0];
     let users: WithId<Following>[];
     if (cursor == Number.MAX_SAFE_INTEGER.toString()) {
@@ -89,10 +90,19 @@ export async function getInternalUsersFollowingByUserId(actorId: string, options
     return {
         users,
         nextCursor: users[users.length - 1]?._id.toHexString(),
-        last: users[users.length - 1]?._id === lastFollowing?._id
+        last: users[users.length - 1]?._id === lastFollowing?._id,
+        totalItems : await followersCollection.countDocuments()
     }
 }
 
 export function getAllUsersFollowersByUserId(actorId: string) {
     return followersCollection.find({actorId}).toArray()
+}
+
+export async function isFollowing(followerId: string, followeeId: string): Promise<boolean> {
+  const followRelationship = await followingCollection.findOne({
+    followerId: followerId, 
+    followeeId: followeeId, 
+  });
+  return !!followRelationship; 
 }

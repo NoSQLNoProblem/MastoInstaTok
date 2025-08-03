@@ -9,8 +9,9 @@ interface UserCardProps {
     username: string
     fullName: string
     bio: string
-    avatar: string
+    avatarURL: string | undefined
     isFollowing: boolean
+    isFollowedBy: boolean
     followers: number
   }
   onFollow: (userId: string) => void
@@ -30,13 +31,14 @@ export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) 
     <div className={styles.userCard}>
       <div className={styles.userInfo}>
         <div className={styles.avatar}>
-          <img src={user.avatar || placeHolderAvatar} alt={user.username} className={styles.avatarImage} />
+          <img src={user?.avatarURL || placeHolderAvatar} alt={user.username} className={styles.avatarImage} />
         </div>
         <div className={styles.userDetails}>
           <h3 className={styles.username}>{user.username}</h3>
           <p className={styles.fullName}>{user.fullName}</p>
           <p className={styles.fullName}>{user.bio}</p>
           <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
+          {user.isFollowedBy && (<p className={styles.mutualFollow}>Follows you</p>)}
         </div>
       </div>
 

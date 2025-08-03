@@ -11,7 +11,7 @@ import { PostData } from "@/types/post";
 import { UserProfile } from "@/types/profile";
 import { apiService } from "@/services/apiService";
 
-const PAGE_SIZE = 6; // Number of posts to show per page
+const PAGE_SIZE = 2; // Number of posts to show per page
 async function fetchPostsApi(offset: number) {
   // THIS IS FOR TESTING VIA MOCKS
   //==========================================
@@ -25,9 +25,11 @@ async function fetchPostsApi(offset: number) {
   //===========================================
 
   const data = await apiService.get(
-    `/me?startIndex=${offset}&pageSize=${PAGE_SIZE}`
+    `/platform/users/me/posts?startIndex=${offset}&pageSize=${PAGE_SIZE}`
   );
 
+  console.log(data);
+  
   return { items: data.posts, nextOffset: data.nextOffset };
 }
 
@@ -54,11 +56,10 @@ export default function ProfilePage() {
       router.push("/auth");
       return;
     }
-
-    // Generate mock profile data
+    
     const profile: UserProfile = {
       username: user?.displayName || "",
-      fullHandle: `@${user?.email}`,
+      fullHandle: `@${user?.fullHandle}`,
       bio: user?.bio || "",
       posts: 24,
       followers: 1250,
