@@ -2,14 +2,15 @@ import { type Profile } from 'passport';
 import express from 'express';
 import { FindUserByUserHandle, isLocalUser, LookupUser } from '../services/user-service.js';
 import { FindUser, UpdateUser } from '../database/user-queries.js';
-import { GetOrderedCollectionPage } from '../services/follow-service.js';
-import { createContext, sendFollow, sendUnfollow } from '../federation.js';
-import { AddFollower, AddFollowing, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
-import type { FileType, PostData, User } from '../types.js';
+import { getHandleFromUri, GetOrderedCollectionPage } from '../services/follow-service.js';
+import { createContext, sendFollow, sendNoteToExternalFollowers, sendUnfollow } from '../federation.js';
+import { AddFollower, AddFollowing, getAllUsersFollowersByUserId, getInternalUsersFollowersByUserId, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
+import type { FileType, Follower, PostData, User } from '../types.js';
 import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js';
-import { nodeInfoToJson } from '@fedify/fedify';
+import { nodeInfoToJson, Person } from '@fedify/fedify';
 import { getFollowRecordByActors } from '../database/object-queries.js';
 import { uploadToS3 } from '../lib/s3.js';
+import { getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
@@ -172,17 +173,70 @@ UserRouter.post("/api/platform/users/:userHandle/posts", async (req, res, next) 
             likes : 0,
             userHandle : user.fullHandle,
             mediaURL,
-            timestamp : Date.now().toString(),
+            timestamp : Date.now(),
         }
+        // save the post data to the db
+        await Post(post)
 
-        // let the followers know that someone has posted
-        // add the dispatchers for those other types
-        // write the endpoint to retrieve a post
-    
+        // get the internal and the external followers
+        const followerCursor = getAllUsersFollowersByUserId(user.actorId);
+        let externalFollowers : Person[] = []
+        while(followerCursor.hasNext()){
+            const follower = await followerCursor.next();
+            if (!follower?.actorId) continue;
+            if(await isLocalUser(req, getHandleFromUri(follower?.actorId))){
+                // Do nothing since we will fetch the posts of local followers from the db withut concern of what has
+                // been posted
+                continue;
+            }else{
+                const user = await LookupUser(getHandleFromUri(follower.uri), req);
+                if (!user) continue;
+                externalFollowers.push(user);
+            }
+        }
+        await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, fileData, mediaURL, mimeType == "mp4" ? "video" : "image");
+        next();
     }catch(e){
         next(e)
     }
-    
-
 })
+
+UserRouter.get("/api/platform/users/me/feed", async (req, res, next)=>{
+   const user = await FindUser(req.user as Profile) as User; 
+   const followerCursor = getAllUsersFollowersByUserId(user.actorId);
+   const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
+   const feed : PostData[] = []
+   const oldestPosts : number[] = []
+   while(followerCursor.hasNext()){
+        const follower = await followerCursor.next();
+        if(!follower?.uri) continue;
+        const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.uri), cursor);
+        feed.concat(posts);
+        oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
+   }
+
+   feed.toSorted((a, b)=>{
+      return a.timestamp - b.timestamp
+   })
+
+   // Getting the new cursor is a fucked up problem that I don't want to think about
+   // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
+   const newCursor = oldestPosts.reduce((prev, curr)=> curr > prev ? curr : prev)
+   res.json({
+        posts: feed,
+        nextCursor: newCursor 
+   })
+})
+
+
+function getOldestPost(posts : PostData[]){
+    if(posts.length == 0) return null;
+    let currMin= posts[0];
+    for(const post of posts){
+        if(post.timestamp < currMin.timestamp){
+            currMin = post;
+        }
+    }
+    return currMin;
+}
 

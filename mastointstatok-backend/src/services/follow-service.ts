@@ -94,7 +94,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
     }
 }
 
-function getHandleFromUri(uri : string){
+export function getHandleFromUri(uri : string){
     const uriSplit = uri.split("/");
     return `@${uriSplit[uriSplit.length - 1]}@${new URL(uri).host}`;
 }

@@ -8,7 +8,7 @@ const followingCollection = db.collection<Following>('following');
 
 export async function AddFollower(actorId: string, followerId: string, followerInbox: string) {
     const followerToInsert: Follower = {
-        uri: followerId,
+        uri: followerId, 
         inboxUri: followerInbox,
         actorId: actorId
     }
@@ -91,4 +91,8 @@ export async function getInternalUsersFollowingByUserId(actorId: string, options
         nextCursor: users[users.length - 1]?._id.toHexString(),
         last: users[users.length - 1]?._id === lastFollowing?._id
     }
+}
+
+export function getAllUsersFollowersByUserId(actorId: string) {
+    return followersCollection.find({actorId})
 }

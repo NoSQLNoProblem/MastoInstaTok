@@ -10,11 +10,11 @@ import {
   Image
 } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import type { AcceptObject, Follower, FollowObject } from "./types.js";
+import type { AcceptObject, Attachment, CreateObject, Follower, FollowObject, NoteObject, UndoObject } from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
 import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
-import { getAcceptRecord, getFollowRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
+import { getAcceptRecord, getAttachmentRecord, getCreateRecord, getFollowRecord, getNoteRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
 import { ValidationError } from "./lib/errors.js";
 
 const logger = getLogger("mastointstatok-backend");
@@ -179,7 +179,7 @@ federation.setObjectDispatcher(
 federation.setObjectDispatcher(Follow,
   "/users/{userId}/follows/{followId}",
   async (ctx, { userId, followId }) => {
-    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${followId}`);
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/follows/${followId}`);
     const followObject: FollowObject | null = await getFollowRecord(id);
     if (!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
     return new Follow({
@@ -193,13 +193,13 @@ federation.setObjectDispatcher(Follow,
 federation.setObjectDispatcher(Undo,
   "/users/{userId}/undos/{undoId}",
   async (ctx, { userId, undoId }) => {
-    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${undoId}`);
-    const followObject: FollowObject | null = await getUndoRecord(id);
-    if (!followObject || !followObject?.id || !followObject?.actor || !followObject?.object) return null;
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/undos/${undoId}`);
+    const undoObject: UndoObject | null = await getUndoRecord(id);
+    if (!undoObject || !undoObject?.id || !undoObject?.actor || !undoObject?.object) return null;
     return new Undo({
-      id: new URL(followObject?.id),
-      actor: new URL(followObject?.actor),
-      object: new URL(followObject?.object)
+      id: new URL(undoObject.id),
+      actor: new URL(undoObject.actor),
+      object: new URL(undoObject.object)
     });
   }
 )
@@ -273,31 +273,106 @@ export async function sendUnfollow(
   return true;
 }
 
-export async function sendNoteToFollowers(
+federation.setObjectDispatcher(Create,
+  "/users/{userId}/creates/{createId}",
+  async (ctx, { userId, createId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/creates/${createId}`);
+    const createObject: CreateObject | null = await getCreateRecord(id);
+    if (!createObject || !createObject?.id || !createObject?.actor || !createObject?.object) return null;
+    return new Create({
+      id: new URL(createObject.id),
+      actor: new URL(createObject.actor),
+      object: createObject.object
+    });
+  }
+)
+
+federation.setObjectDispatcher(Note,
+  "/users/{userId}/notes/{noteId}",
+  async (ctx, { userId, noteId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/notes/${noteId}`);
+    const noteObject: NoteObject | null = await getNoteRecord(id);
+    if (!noteObject) return null;
+    return new Note({
+      id: new URL(noteObject.id),
+      attribution: ctx.getActorUri(noteObject.senderId),
+      to: PUBLIC_COLLECTION,
+      cc: ctx.getFollowersUri(noteObject.senderId),
+      content: noteObject.content,
+      attachments : [new URL(noteObject.attachmentUrl)]
+    })
+  }
+)
+
+federation.setObjectDispatcher(Note,
+  "/users/{userId}/notes/{noteId}",
+  async (ctx, { userId, noteId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/notes/${noteId}`);
+    const noteObject: NoteObject | null = await getNoteRecord(id);
+    if (!noteObject) return null;
+    return new Note({
+      id: new URL(noteObject.id),
+      attribution: ctx.getActorUri(noteObject.senderId),
+      to: PUBLIC_COLLECTION,
+      cc: ctx.getFollowersUri(noteObject.senderId),
+      content: noteObject.content,
+      attachments : [new URL(noteObject.attachmentUrl)]
+    })
+  }
+)
+
+federation.setObjectDispatcher(Image,
+  "/users/{userId}/images/{imageId}",
+  async (ctx, { userId, imageId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/images/${imageId}`);
+    const attachment: Attachment | null = await getAttachmentRecord(id);
+    if (!attachment) return null;
+    return new Image({
+      id: attachment.id,
+      url: attachment.url
+    })
+  }
+)
+
+federation.setObjectDispatcher(Video,
+  "/users/{userId}/videos/{videoId}",
+  async (ctx, { userId, videoId }) => {
+    const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/videos/${videoId}`);
+    const attachment: Attachment | null = await getAttachmentRecord(id);
+    if (!attachment) return null;
+    return new Video({
+      id: attachment.id,
+      url: attachment.url
+    })
+  }
+)
+
+export async function sendNoteToExternalFollowers(
   ctx: Context<unknown>,
   senderId: string,
-  recipients: Recipient,
+  recipients: Recipient[],
   content: string,
   attachmentUrl: string,
   attachmentType: "video" | "image"
 ) {
   const createResourceGUID = crypto.randomUUID().split("-")[0]
   const noteResourceGUID = crypto.randomUUID().split("-")[0]
-  const imageResourceGUID = crypto.randomUUID().split("-")[0]
+  const attachmentResourceGUID = crypto.randomUUID().split("-")[0]
   const sender = ctx.parseUri(new URL(senderId));
   if (sender?.type !== "actor") {
     throw new ValidationError();
   }
 
   const noteId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/notes/${noteResourceGUID}`);
-  const attachmentId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/images/${noteResourceGUID}`)
+  const imageId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/images/${attachmentResourceGUID}`)
+  const videoId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/videos/${attachmentResourceGUID}`)
   const createId = new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/creates/${createResourceGUID}`)
 
   const attachments = attachmentType == "image" ? [new Image({
-    id: attachmentId,
+    id: imageId,
     url: new URL(attachmentUrl),
   })] : [new Video({
-    id: new URL(`${ctx.canonicalOrigin}/users/${sender.identifier}/videos/${noteResourceGUID}`),
+    id: videoId,
     url: new URL(attachmentUrl),
   })]
 
@@ -318,20 +393,20 @@ export async function sendNoteToFollowers(
 
   // write all the objects to the db for retrieval later
   insertAttachmentRecord({
-    id : attachments[0].id as URL,
-    url : attachments[0].url as URL
+    id: attachments[0].id as URL,
+    url: attachments[0].url as URL
   })
 
   insertNoteRecord({
-    attachmentUrl : note.attachmentIds[0].href,
-    content : content,
+    attachmentUrl: note.attachmentIds[0].href,
+    content: content,
     id: noteId.href,
     senderId: senderId
   });
 
   insertCreateRecord({
     actor: (create.actorId as URL).href,
-    id : (create.id as URL).href,
+    id: (create.id as URL).href,
     object: note
   })
 
