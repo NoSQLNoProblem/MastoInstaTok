@@ -21,6 +21,23 @@ resource "aws_default_vpc" "default_vpc" {
   }
 }
 
+resource "aws_s3_bucket" "mastoinstatok_bucket" {
+  bucket = "bbd-grad-project-mastoinstatok-bucket"
+
+  tags = {
+    Name        = "mastoinstatok_bucket"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "public_access" {
+  bucket = aws_s3_bucket.mastoinstatok_bucket.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
 data "aws_availability_zones" "available_zones" {
   
 }

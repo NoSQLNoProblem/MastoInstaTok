@@ -3,6 +3,7 @@ env:
   AWS_REGION: af-south-1
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -84,6 +85,7 @@ jobs:
         run: |
           mkdir -p front-end-build
           cp -r .next front-end-build/
+          cp -r public front-end-build/
           cp package.json front-end-build/
           zip -r front-end-build.zip front-end-build
           
@@ -216,6 +218,8 @@ jobs:
             GOOGLE_CLIENT_ID, googleclientid
             GOOGLE_CLIENT_SECRET, googleclientsecret
             BASE_API_URL, baseapiurl
+            PROJ_AWS_ACCESS_KEY_ID, awsaccesskeyid
+            PROJ_AWS_SECRET_ACCESS_KEY, awssecretaccesskey
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -235,6 +239,8 @@ jobs:
               GOOGLE_CLIENT_ID=${{ env.GOOGLE_CLIENT_ID }}
               GOOGLE_CLIENT_SECRET=${{ env.GOOGLE_CLIENT_SECRET }}
               BASE_API_URL=${{ env.BASE_API_URL }}
+              AWS_ACCESS_KEY_ID=${{ env.PROJ_AWS_ACCESS_KEY_ID }}
+              AWS_SECRET_ACCESS_KEY=${{ env.PROJ_AWS_SECRET_ACCESS_KEY }}
               ENV_VAR
               EOF
       
@@ -379,6 +385,9 @@ jobs:
             proxy_set_header Connection 'upgrade';
             proxy_set_header Host $host;
             proxy_cache_bypass $http_upgrade;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
         }
         NGINX_CONF

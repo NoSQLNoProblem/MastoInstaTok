@@ -3,7 +3,7 @@ import  client  from '../lib/mongo.js';
 import { type User } from '../types.js';
 import { createContext } from '../federation.js';
 import { type Request } from 'express';
-import {  Person} from '@fedify/fedify';
+import { Person, Image as FedifyImage } from '@fedify/fedify';
 import { AddUser, FindUserByUri } from '../database/user-queries.js';
 import * as crypto from 'crypto';
 
@@ -17,14 +17,18 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
 
   const username = `${profile.displayName.toLowerCase().replace(/\s+/g, '')}-${crypto.randomUUID().split("-")[0]}`;
   const actorId = getActorId(username, baseUrl);
-  const userToInsert = {
+
+  const avatarURL = (profile.photos && profile.photos.length > 0) ? profile.photos[0].value : undefined;
+
+  const userToInsert : User = {
     googleId: profile.id,
     email: profile.emails?.[0]?.value,
     displayName: null,
     bio: null,
     actorId: actorId,
     username,
-    fullHandle: `@${username}@${baseUrl.split("//")[1]}`
+    fullHandle: `@${username}@${baseUrl.split("//")[1]}`,
+    avatarURL: avatarURL
   };
 
   return await AddUser(userToInsert)
@@ -32,23 +36,46 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
 
 export async function FindUserByUserHandle(userHandle: string, request: Request) {
   const ctx = createContext(request);
+  console.log("Create context successfully");
   const actor = await LookupUser(userHandle, request);
+  console.log("The actor is >>>>>>>>> ", actor)
   const actorId = actor?.id;
+  const icon = await actor?.getIcon();
   const summary = actor?.summary
   if (!actorId) return null
+  console.log("Made it here ");
+  let avatarUrlString: string | undefined;
+  if (icon) {
+    const iconUrl = icon instanceof FedifyImage ? icon.url : icon ;
+    console.log(iconUrl);
+    if (iconUrl instanceof URL) {
+      avatarUrlString = iconUrl.href;
+    }
+  }
   const user: User = {
     actorId: actorId.href,
     bio: summary as string,
     displayName: actor.name as string,
     fullHandle: userHandle,
+    avatarURL: avatarUrlString
   }
   return user;
 }
+
 export async function LookupUser(userHandle: string, request : Request) {
+  console.log("UESR HANDLE", userHandle);
   const ctx = createContext(request);
   if(await isLocalUser(request, userHandle)){
      const actor = await FindUserByUri(ctx.getActorUri(userHandle.split("@")[1]).href);
      if(!actor?.actorId || !actor.username ) return null;
+
+     const userIcon = actor.avatarURL
+      ? new FedifyImage({
+          mediaType: "image/jpeg",
+          url: new URL(actor.avatarURL),
+        })
+      : undefined;
+
      return new Person({
       id: new URL(actor?.actorId),
       preferredUsername: actor.username,
@@ -57,6 +84,7 @@ export async function LookupUser(userHandle: string, request : Request) {
       followers: ctx.getFollowersUri(actor.username),
       summary: actor.bio,
       following: ctx.getFollowingUri(actor.username),
+      icon: userIcon
     });
   }
   const actor = await ctx.lookupObject(userHandle) as Person;
