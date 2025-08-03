@@ -10,6 +10,7 @@ interface User {
   actorId: string
   displayName: string
   fullHandle: string
+  avatar: string
   bio: string
   email?: string
   followers: number
@@ -41,8 +42,14 @@ export default function SearchPage() {
       console.log(following);
 
       const isFollowing = Array.isArray(following.items) && following.items.some((item: any) => {
-        return item && item.id === `https://www.bbd-grad-project.co.za/api/users/${handle}`
-      })
+          if (!item || !item.actorId) return false
+
+          const targetActorId = userData.actorId.replace(/\/$/, "")
+          const itemActorId = item.actorId.replace(/\/$/, "").replace(/\)$/, "")
+
+          return itemActorId === targetActorId
+        })
+
 
       setUser({
         ...userData,
@@ -71,6 +78,19 @@ export default function SearchPage() {
       } else {
         setError("An error occurred while trying to follow the user.")
       }
+    }
+  }
+
+    const handleUnfollow = async () => {
+    if (!user) return
+    try {
+      await apiService.delete(`/platform/users/me/follows/${user.fullHandle}`)
+      setUser((prev) =>
+        prev ? { ...prev, isFollowing: false, followers: Math.max(0, prev.followers - 1) } : null
+      )
+    } catch (err: any) {
+      console.error(err)
+      setError("An error occurred while trying to unfollow the user.")
     }
   }
 
@@ -110,17 +130,18 @@ export default function SearchPage() {
             {!loading && user && (
               <div className={styles.userList}>
                 <UserCard
-                  user={{
-                    id: user.actorId,
-                    username: user.fullHandle,
-                    fullName: user.displayName,
-                    bio: user.bio,
-                    avatar: "/placeholder.svg?height=60&width=60",
-                    isFollowing: user.isFollowing,
-                    followers: user.followers,
-                  }}
-                  onFollow={handleFollow}
-                />
+                    user={{
+                      id: user.actorId,
+                      username: user.fullHandle,
+                      fullName: user.displayName,
+                      bio: user.bio,
+                      avatar: user.avatar,
+                      isFollowing: user.isFollowing,
+                      followers: user.followers,
+                    }}
+                    onFollow={() => handleFollow()}
+                    onUnfollow={() => handleUnfollow()}
+                  />
               </div>
             )}
 

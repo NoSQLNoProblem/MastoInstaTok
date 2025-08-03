@@ -63,10 +63,9 @@ export async function FindUserByUserHandle(userHandle: string, request: Request)
 }
 
 export async function LookupUser(userHandle: string, request : Request) {
-  console.log(userHandle);
+  console.log("UESR HANDLE", userHandle);
   const ctx = createContext(request);
   if(await isLocalUser(request, userHandle)){
-    console.log("this should not be here");
      const actor = await FindUserByUri(ctx.getActorUri(userHandle.split("@")[1]).href);
      if(!actor?.actorId || !actor.username ) return null;
 

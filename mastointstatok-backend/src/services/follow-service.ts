@@ -8,6 +8,8 @@ import { getMaxObjectId } from "../lib/mongo.js";
 import { FindUserByUri } from "../database/user-queries.js";
 
 export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null,  next?: string) {
+    console.log("HFJAHSFASJFJASLKFJASKLFJL")
+    
     const ctx = createContext(request);
     let collectionPage;
     const handle = request.params.user;
@@ -27,7 +29,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         console.log("BASE URL: " + baseUri);
         return {
             items : await Promise.all(followersCollection.users.map(async (follower) => {
-                const user = await LookupUser(follower.uri, request);
+                const user = await LookupUser(getHandleFromUri(follower.uri), request);
                 if(!user || !user.id) return;
                 return {
                     actorId: user.id.href,
@@ -52,7 +54,6 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
     }
 
     const items: User[] = []
-    console.log("the collection page is", collectionPage)
     try {
         for await (const item of collectionPage.getItems()) {
             try {
@@ -91,6 +92,11 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
             totalItems: collectionPage.totalItems
         }
     }
+}
+
+function getHandleFromUri(uri : string){
+    const uriSplit = uri.split("/");
+    return `@${uriSplit[uriSplit.length - 1]}@${new URL(uri).host}`;
 }
 
 const getBaseUri = (request : Request) =>`${request.protocol}://${request.get('host')}${request.originalUrl}`.split("?")[0]
