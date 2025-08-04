@@ -8,6 +8,7 @@ import styles from "./Navigation.module.css"
 export default function Navigation() {
   const pathname = usePathname()
   const { logout, isAuthenticated } = useAuth() 
+  const scrolliosisLogo = '/scrolliosis-logo-horizontal.png'
 
   const handleLogout = () => {
     logout();
@@ -22,7 +23,7 @@ export default function Navigation() {
     <nav className={styles.nav}>
       <div className={styles.container}>
         <Link href="/feed" className={styles.logo}>
-          🦕🫵‼️
+          <img className={styles.applogo} src={scrolliosisLogo}/>
         </Link>
 
         <div className={styles.navLinks}>
@@ -39,7 +40,7 @@ export default function Navigation() {
             👤 Profile
           </Link>
           <button onClick={handleLogout} className={styles.logoutButton}>
-            🚪 Logout
+            ⏪ Logout
           </button>
         </div>
       </div>

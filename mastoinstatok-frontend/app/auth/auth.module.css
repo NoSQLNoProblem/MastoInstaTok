@@ -16,13 +16,6 @@
   max-width: 400px;
 }
 
-.logo h1 {
-  text-align: center;
-  color: #333;
-  margin-bottom: 30px;
-  font-size: 28px;
-  font-weight: 300;
-}
 
 .form {
   display: flex;
@@ -121,6 +114,19 @@
   text-decoration: underline;
 }
 
+.logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.applogo {
+  max-width: 150px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 @media (max-width: 480px) {
   .authCard {
     padding: 30px 20px;
@@ -129,4 +135,40 @@
   .logo h1 {
     font-size: 24px;
   }
+}
+
+.slogan {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 20px;
+  line-height: 1.4;
+  padding: 0 10px;
+}
+
+@media (max-width: 480px) {
+  .slogan {
+    font-size: 16px;
+  }
+}
+
+.googleButton {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px; 
+}
+
+.googleIcon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }

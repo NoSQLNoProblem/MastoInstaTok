@@ -5,8 +5,11 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 
 export const metadata: Metadata = {
-  title: 'Mxit 🕊️ Never forget',
+  title: 'Scrolliosis: Your federated social media app',
   description: 'A federated social media app',
+  icons: {
+    icon: '/scrolliosis-logo.png',
+  },
 }
 
 export default function RootLayout({
