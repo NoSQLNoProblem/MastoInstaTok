@@ -1,5 +1,4 @@
-import { getLogger } from "@logtape/logtape";
-import { createFederation, exportJwk, generateCryptoKeyPair, importJwk, Follow, Person, Image, Accept, Create, Endpoints, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video } from "@fedify/fedify";
+import { createFederation, exportJwk, generateCryptoKeyPair, importJwk, Follow, Person, Image, Accept, Create, Endpoints, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video, MemoryKvStore } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
 import type { AcceptObject, Attachment, CreateObject, Follower, FollowObject, NoteObject, UndoObject } from "./types.js";
 import { type Request } from "express";
@@ -8,19 +7,16 @@ import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowi
 import { getAcceptRecord, getAttachmentRecord, getCreateRecord, getFollowRecord, getNoteRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
 import { ValidationError } from "./lib/errors.js";
 
-const logger = getLogger("mastointstatok-backend");
-
 export const federation = createFederation({
-  kv: new MongoKvStore(),
+  kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
 
 const kv = new MongoKvStore();
 
 federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier) => {
-  const user = await FindUserByUri((await ctx.getActorUri(identifier)).href);
+  const user = await FindUserByUri((ctx.getActorUri(identifier)).href);
   if (!user) return null;
-  console.log("This line means that the web finger is making a request to object dispatcher");
 
   const userIcon = user.avatarURL
     ? new Image({
@@ -224,7 +220,7 @@ export async function sendFollow(
   );
 
   insertFollowRecord({
-    id: `${ctx.canonicalOrigin}/users/${senderId}/follows/${resourceGUID}`,
+    id: `${ctx.canonicalOrigin}/users/${sender.identifier}/follows/${resourceGUID}`,
     actor: ctx.getActorUri(sender.identifier).href,
     object: recipient.id.href,
   })
@@ -257,7 +253,7 @@ export async function sendUnfollow(
   );
 
   insertUndoRecord({
-    id: `${ctx.canonicalOrigin}/users/${senderId}/undos/${resourceGUID}`,
+    id: `${ctx.canonicalOrigin}/users/${sender.identifier}/undos/${resourceGUID}`,
     actor: ctx.getActorUri(sender.identifier).href,
     object: recipient.id.href,
   })
