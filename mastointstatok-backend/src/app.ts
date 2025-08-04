@@ -1,6 +1,5 @@
 import express from "express";
 import { integrateFederation } from "@fedify/express";
-import { getLogger } from "@logtape/logtape";
 import federation from "./federation.js";
 import { AuthRouter } from "./routes/auth-routes.js";
 import passport, { type Profile } from "passport";
@@ -12,12 +11,19 @@ import { UserRouter } from "./routes/user-routes.js";
 import cors from "cors";
 import { errorHandler } from "./middleware/error-middleware.js";
 import { PostRouter } from "./routes/post-routes.js";
-
-const logger = getLogger("mastointstatok-backend");
+import { AsyncLocalStorage } from "node:async_hooks";
+import { configure, getConsoleSink } from "@logtape/logtape";
 
 export const app = express();
 
-
+await configure({
+  sinks: { console: getConsoleSink() },
+  loggers: [
+    { category: "your-app", sinks: ["console"], lowestLevel: "debug" },
+    { category: "fedify",   sinks: ["console"], lowestLevel: "error" },
+  ],
+  contextLocalStorage: new AsyncLocalStorage(),
+});
 
 const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za'];
     app.use(cors({
