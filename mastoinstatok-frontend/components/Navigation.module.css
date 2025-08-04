@@ -98,3 +98,10 @@
     font-size: 11px;
   }
 }
+
+.applogo {
+  max-width: 120px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
