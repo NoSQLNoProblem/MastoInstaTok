@@ -10,8 +10,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { PostData } from "@/types/post";
 import { apiService } from "@/services/apiService";
 
-const PAGE_SIZE = 6;
-async function fetchMyPostsApi(offset: number) {
+async function fetchMyPostsApi(cursor: number) {
 // THIS IS FOR TESTING VIA MOCKS
   //==========================================
   // const response = await fetch(
@@ -22,11 +21,9 @@ async function fetchMyPostsApi(offset: number) {
   // );
   // const data = await response.json();
   //===========================================
-  const data = await apiService.get(
-    `/platform/users/me/posts`
-  );
-  console.log(data);
-  
+
+  const endpoint = cursor === 0 ? `/platform/users/me/posts` : `/platform/users/me/posts?cursor=${cursor}`;
+  const data = await apiService.get(endpoint);
   return { items: data.posts, nextOffset: data.nextCursor };
 }
 
