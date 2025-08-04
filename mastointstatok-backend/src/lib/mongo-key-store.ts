@@ -8,7 +8,6 @@ export class MongoKvStore implements KvStore {
   
   async get<T=unknown>(key: KvKey): Promise<T | undefined> {
     const item = await collection.findOne({ key });
-    console.log(item?.value);
     return item?.value
   }
 

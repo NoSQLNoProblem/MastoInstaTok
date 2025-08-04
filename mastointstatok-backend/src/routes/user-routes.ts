@@ -280,36 +280,31 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
 })
 
 
-UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
-    const user = await FindUser(req.user as Profile) as User;
-    const followers = await getAllUsersFollowingByUserId(user.actorId);
-    const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
-
-    const cacheKey = `feed:${user.fullHandle}:cursor:${cursor}`;
+UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
+   const user = await FindUser(req.user as Profile) as User; 
+   const followers = await getAllUsersFollowingByUserId(user.actorId);
+   const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
+   
+   const cacheKey = `feed:${user.fullHandle}:cursor:${cursor}`;
     const cachedResponse = await redisClient.get(cacheKey);
 
     if (cachedResponse) {
         console.log("Sending cached response for feed");
     }
 
-    let feed: PostData[] = []
-    const oldestPosts: number[] = []
-    for (const follower of followers) {
-        if (!follower?.followerId) continue;
-        console.log(cursor);
+  
+   let feed : PostData[] = []
+   const oldestPosts : number[] = []
+   for(const follower of followers){
+        if(!follower?.followerId) continue;
         const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
         feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
-    }
-    console.log("The feed is");
+   }
 
-    feed.sort((a, b) => {
-        return a.timestamp - b.timestamp
-    })
-
-    // Getting the new cursor is a fucked up problem that I don't want to think about
-    // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
-    const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : undefined
+   feed.sort((a, b)=>{
+      return b.timestamp - a.timestamp
+   })
 
     const response = {
         posts: feed,
