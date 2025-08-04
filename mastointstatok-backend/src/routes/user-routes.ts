@@ -216,7 +216,6 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
    const oldestPosts : number[] = []
    for(const follower of followers){
         if(!follower?.followerId) continue;
-        console.log(cursor);
         const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
         feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);

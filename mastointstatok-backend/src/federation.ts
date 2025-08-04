@@ -224,7 +224,7 @@ export async function sendFollow(
   );
 
   insertFollowRecord({
-    id: `${ctx.canonicalOrigin}/users/${senderId}/follows/${resourceGUID}`,
+    id: `${ctx.canonicalOrigin}/users/${sender.identifier}/follows/${resourceGUID}`,
     actor: ctx.getActorUri(sender.identifier).href,
     object: recipient.id.href,
   })
@@ -257,7 +257,7 @@ export async function sendUnfollow(
   );
 
   insertUndoRecord({
-    id: `${ctx.canonicalOrigin}/users/${senderId}/undos/${resourceGUID}`,
+    id: `${ctx.canonicalOrigin}/users/${sender.identifier}/undos/${resourceGUID}`,
     actor: ctx.getActorUri(sender.identifier).href,
     object: recipient.id.href,
   })
