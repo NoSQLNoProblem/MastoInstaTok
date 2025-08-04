@@ -1,3 +1,4 @@
+import { FindUserByUri } from "../database/user-queries.js"
 import client from "../lib/mongo.js"
 import type { CommentDocument } from "../types/PostTypes.js"
 import { ObjectId } from "mongodb"
@@ -20,16 +21,37 @@ export async function AddComment(userId: string, postId: string, content: string
     createdAt: new Date(),
   }
   const result = await commentsCollection.insertOne(newComment)
-  return { ...newComment, _id: result.insertedId }
+  const user = await FindUserByUri(userId)
+  const displayableName = user?.displayName || user?.username || "Unknown User"
+  return { ...newComment, _id: result.insertedId, displayName: displayableName  }
 }
 
 /**
- * Retrieves all comments for a specific post, sorted by creation date.
+ * Retrieves all comments for a specific post, sorted by creation date,
+ * including the display name of the comment author.
  * @param postId The ID of the post to get comments for.
- * @returns An array of comment documents.
+ * @returns An array of comment documents
  */
 export async function GetCommentsForPost(postId: string): Promise<CommentDocument[]> {
-  return await commentsCollection.find({ postId }).sort({ createdAt: 1 }).toArray()
+  const comments = await commentsCollection.find({ postId }).sort({ createdAt: 1 }).toArray()
+
+  const uniqueUserIds = [...new Set(comments.map((comment) => comment.userId))]
+
+  const users = await Promise.all(uniqueUserIds.map((userId) => FindUserByUri(userId)))
+
+  const userDisplayNameMap = new Map<string, string>()
+  users.forEach((user) => {
+    if (user) {
+      userDisplayNameMap.set(user.actorId, user.displayName || user.username || "Unknown User")
+    }
+  })
+
+  const commentsWithDisplayName = comments.map((comment) => ({
+    ...comment,
+    displayName: userDisplayNameMap.get(comment.userId) || "Unknown User",
+  }))
+
+  return commentsWithDisplayName
 }
 
 /**

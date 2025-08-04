@@ -13,6 +13,7 @@ export type CommentDocument = {
   postId: string 
   content: string
   createdAt: Date
+  displayName?: string
 }
 
 export type PostLikesResponse = {

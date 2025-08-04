@@ -11,7 +11,7 @@ import { Strategy as GoogleStrategy, type VerifyCallback } from "passport-google
 import session from "express-session"
 import "dotenv/config"
 import { CreateUser } from "./services/user-service.js"
-import { FindUser } from "./database/user-queries.js" 
+import { FindUser, FindUserByUri } from "./database/user-queries.js" 
 import cors from "cors";
 import { errorHandler } from "./middleware/error-middleware.js";
 import { PostRouter } from "./routes/post-routes.js";
@@ -35,30 +35,44 @@ app.set("trust proxy", true);
 app.use(integrateFederation(federation, (req) =>  req.user));
 app.use(express.json({ limit: '10mb' }))
 
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID ?? "",
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-  callbackURL: '/api/auth/google/callback',
-  passReqToCallback: true,
-}, async (req, accessToken:string, refreshToken:string, profile:Profile, done:VerifyCallback) => {
-  await CreateUser(profile, `${req.protocol}://${req.get('host')}`);
-  return done(null, profile);
-}));
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      callbackURL: "/api/auth/google/callback",
+      passReqToCallback: true,
+    },
+    async (req, accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
+      try {
+        const user = await CreateUser(profile, `${req.protocol}://${req.get("host")}`)
+        return done(null, user)
+      } catch (error) {
+        console.error("Error in GoogleStrategy callback:", error)
+        return done(error)
+      }
+    },
+  ),
+)
 
 passport.serializeUser((user: any, done) => {
-  done(null, user.googleId)
+  console.log("=== SERIALIZE USER DEBUG ===")  //TODO: cleanup on isle whatever this is. 
+  console.log("User object to serialize:", user)
+  done(null, user.actorId)
 })
 
-passport.deserializeUser(async (googleId: string, done) => {
+passport.deserializeUser(async (actorId: string, done) => {
+  console.log("=== DESERIALIZE USER DEBUG ===") //TODO: cleanup on isle whatever this is. 
+  console.log("actorId from session:", actorId)
 
   try {
-    const user = await FindUser({ id: googleId } as Profile)
-    console.log("User found by FindUser (deserialize):", user)
+    const user = await FindUserByUri(actorId)
+    console.log("User found by FindUserByUri (deserialize):", user)
 
     if (user) {
       done(null, user)
     } else {
-      console.log("User not found in DB during deserialization for googleId:", googleId)
+      console.log("User not found in DB during deserialization for actorId:", actorId)
       done(null, false)
     }
   } catch (error) {
@@ -73,7 +87,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true,
+      secure: true, //set to false for local testing (its for https)
       sameSite: "lax",
     },
   }),
