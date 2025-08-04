@@ -8,6 +8,7 @@ import styles from "./feed.module.css";
 import { apiService } from "@/services/apiService";
 import { usePagination } from "@/hooks/usePagination";
 import { PostData } from "@/types/post";
+import { useAuth } from "@/contexts/AuthContext";
 const PAGE_SIZE = 5;
 
 export async function fetchPostsApi(offset: number) {
@@ -41,10 +42,18 @@ export default function FeedPage() {
     fetchNext,
     reset,
   } = usePagination<PostData>(fetchPostsApi);
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     fetchNext();
   }, [fetchNext]);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     const handleScroll = () => {

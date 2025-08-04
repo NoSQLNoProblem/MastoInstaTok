@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePagination } from "@/hooks/usePagination";
 import { PostData } from "@/types/post";
 import { apiService } from "@/services/apiService";
+import CommentModal from "@/components/CommentModal";
 
 const PAGE_SIZE = 6;
 async function fetchMyPostsApi(offset: number) {
@@ -34,6 +35,7 @@ export default function ProfilePage() {
   const [followersCount, setFollowersCount] = useState<string>("--");
   const [followingCount, setFollowingCount] = useState<string>("--");
   const [postCount, setPostCount] = useState<string>("--");
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
   const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -261,10 +263,18 @@ export default function ProfilePage() {
               </div>
               <div className={styles.modalStats}>
                 <span>❤️ {selectedPost.likes} likes</span>
+                <span onClick={() => setIsCommentModalOpen(true)}>💬</span>
               </div>
             </div>
           </div>
+          {isCommentModalOpen && (
+                <CommentModal 
+                  postId={selectedPost.id} 
+                  onClose={() => setIsCommentModalOpen(false)} 
+                />
+              )}
         </div>
+
       )}
     </div>
   );

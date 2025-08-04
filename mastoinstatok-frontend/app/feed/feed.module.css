@@ -4,44 +4,44 @@
 }
 
 .main {
-  padding-top: 60px;
-  padding-bottom: 20px;
+  padding-top: 3.75rem;
+  padding-bottom: 1.25rem;
 }
 
 .feed {
-  max-width: 600px;
+  max-width: 37.5rem;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 1.25rem;
 }
 
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40px 20px;
+  padding: 2.5rem 1.25rem;
   color: #666;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #4285f4;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: .1875rem solid #f3f3f3;
+  border-top: .1875rem solid #4285f4;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 15px;
+  margin-bottom: .9375rem;
 }
 
 .tryAgainButton {
   background: #4285f4;
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 14px;
+  padding: .625rem 1.25rem;
+  border-radius: 1.25rem;
+  font-size: .875rem;
   font-weight: 500;
   cursor: pointer;
-  margin-top: 15px;
+  margin-top: .9375rem;
   transition: background-color 0.3s ease;
 }
 
@@ -60,12 +60,12 @@
 
 .endMessage {
   text-align: center;
-  padding: 40px 20px;
+  padding: 2.5rem 1.25rem;
   color: #999;
 }
 
 @media (max-width: 768px) {
   .feed {
-    padding: 0 10px;
+    padding: 0 .625rem;
   }
 }

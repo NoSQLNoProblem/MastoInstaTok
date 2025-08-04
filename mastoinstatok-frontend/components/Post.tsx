@@ -3,30 +3,26 @@
 import { useEffect, useRef, useState } from "react"
 import styles from "./Post.module.css"
 import { PostProps } from "@/types/post"
+import CommentModal from "./CommentModal";
 
 // 1. Updated interface to match the backend response
 
 export default function Post({ post, onLike }: PostProps) {
   const [mediaLoaded, setMediaLoaded] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null); // <-- Create a ref for the video element
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    //
-    // Set up the Intersection Observer to pause the video when it's not visible
-    //
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          // Video is in view, play it
           videoRef.current!.currentTime = 0;
           videoRef.current?.play();
         } else {
-          // Video is out of view, pause it
           videoRef.current?.pause();
         }
       },
       {
-        // Trigger the callback when 50% of the video is visible
         threshold: 0.9,
       }
     );
@@ -36,7 +32,6 @@ export default function Post({ post, onLike }: PostProps) {
       observer.observe(currentVideo);
     }
 
-    // Cleanup function to disconnect the observer when the component unmounts
     return () => {
       if (currentVideo) {
         observer.unobserve(currentVideo);
@@ -91,6 +86,7 @@ export default function Post({ post, onLike }: PostProps) {
   };
 
   return (
+    <>
     <article className={styles.post}>
       <header className={styles.header}>
         <div className={styles.userInfo}>
@@ -126,6 +122,13 @@ export default function Post({ post, onLike }: PostProps) {
         >
           ❤️
         </button>
+        <button
+            onClick={() => setIsCommentModalOpen(true)}
+            className={styles.commentButton}
+            aria-label="View comments"
+          >
+            💬
+          </button>
         <span className={styles.likeCount}>
           {post.likes} {post.likes === 1 ? "like" : "likes"}
         </span>
@@ -136,5 +139,12 @@ export default function Post({ post, onLike }: PostProps) {
         <span className={styles.captionText}>{post.caption}</span>
       </div>
     </article>
+    {isCommentModalOpen && (
+        <CommentModal 
+          postId={post.id} 
+          onClose={() => setIsCommentModalOpen(false)} 
+        />
+      )}
+    </>
   )
 }
