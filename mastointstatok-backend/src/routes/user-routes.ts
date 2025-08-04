@@ -216,15 +216,13 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
    const oldestPosts : number[] = []
    for(const follower of followers){
         if(!follower?.followerId) continue;
-        console.log(cursor);
         const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
         feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
    }
-   console.log("The feed is");
 
    feed.sort((a, b)=>{
-      return a.timestamp - b.timestamp
+      return b.timestamp - a.timestamp
    })
 
    // Getting the new cursor is a fucked up problem that I don't want to think about
