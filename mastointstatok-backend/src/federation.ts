@@ -3,7 +3,7 @@ import { MongoKvStore } from "./lib/mongo-key-store.js";
 import type { AcceptObject, Attachment, CreateObject, Follower, FollowObject, NoteObject, UndoObject } from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
-import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
+import { AddFollower, AddFollowing, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
 import { getAcceptRecord, getAttachmentRecord, getCreateRecord, getFollowRecord, getNoteRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
 import { ValidationError } from "./lib/errors.js";
 
@@ -144,7 +144,9 @@ federation
       object: follow,
       to: follow.actorId
     })
-    AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
+    if (!follower?.inboxId) return;
+    AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId.href)
+    AddFollowing(follower?.inboxId.href, follow.objectId.href, follow.actorId.href);
   }).on(Accept, async (ctx, accept)=>{
     if(!accept || !accept.id || !accept.objectId || !accept.actorId) return;
     insertAcceptRecord({
