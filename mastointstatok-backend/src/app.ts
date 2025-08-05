@@ -95,10 +95,6 @@ app.use(
     secret: "keyboard cat",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: true, //set to false for local testing (its for https)
-      sameSite: "lax",
-    },
   }),
 )
 app.use(passport.initialize())
