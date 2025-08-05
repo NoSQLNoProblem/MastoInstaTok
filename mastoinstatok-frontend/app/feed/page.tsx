@@ -26,7 +26,7 @@ export async function fetchPostsApi(cursor: number) {
   const endpoint = cursor === 0 ? `/platform/users/me/feed` : `/platform/users/me/feed?cursor=${cursor}`;
   const data = await apiService.get(endpoint);
 
-  return { items: data.posts, nextOffset: data.nextOffset };
+  return { items: data.posts, nextOffset: data.nextCursor };
 }
 
 
@@ -45,7 +45,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     fetchNext();
-  }, [fetchNext]);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -71,7 +71,7 @@ export default function FeedPage() {
   const handleLike = async (postId: string) => {
     try {
       // Uncomment this line when using the real API
-      // await apiService.post(`api//feed/like?postId=${postId}`, {});
+      await apiService.post(`api//feed/like?postId=${postId}`, {});
 
       // Optimistically update the post's like status
       setPosts((prev) =>
@@ -115,6 +115,18 @@ export default function FeedPage() {
           </button>
         </div>
       );
+    }
+
+    if (!loading && posts.length === 0 && offset === -1) {
+      return (
+        <div className={styles.endMessage}>
+          <h2>Welcome to your feed!</h2>
+          <p>It's looking a little empty here. Find some people to follow to see their posts.</p>
+          <button onClick={() => router.push('/search')} className={styles.tryAgainButton}>
+            Find People
+          </button>
+        </div>
+      )
     }
 
     return (
