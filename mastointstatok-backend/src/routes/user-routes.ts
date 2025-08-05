@@ -62,7 +62,7 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
 UserRouter.put('/platform/users/me', async (req, res, next) => {
     try {
         console.log(req.user);
-        
+
         const user = await FindUser(req.user as Profile) as User
         const { displayName, bio } = req.body;
         if (!displayName || !bio) throw new ValidationError()
@@ -114,18 +114,18 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
         const ctx = createContext(req);
         const recipient = await LookupUser(req.params.followHandle, req);
         if (!recipient || !recipient.id || !recipient.inboxId) throw new NotFoundError();
+        if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+            throw new ConflictError();
+        }
+        if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
+            throw new ConflictError();
+        }
         if (await isLocalUser(req, req.params.followHandle)) {
-            if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
-                throw new ConflictError();
-            }
-            if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
-                throw new ConflictError();
-            }
-            res.status(202).json({ "message": "Successfully created the user" });
+            res.status(202).json({ message: "Successfully followed!" });
             next();
         } else {
             await sendFollow(ctx, user.actorId, recipient);
-            res.status(202);
+            res.status(202).json({ message: "Successfully followed!" });
             next();
         }
     } catch (e) {
@@ -181,73 +181,72 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         const caption = req.body.caption;
         const user = await FindUser(req.user as Profile) as User; // This assertion is valid because we have passed the authentication middleware
         console.log("Found the user at least");
-        const mediaURL = await uploadToS3(fileData, mimeType, `bbd-grad-project-mastoinstatok-bucket`,  crypto.randomUUID())
+        const mediaURL = await uploadToS3(fileData, mimeType, `bbd-grad-project-mastoinstatok-bucket`, crypto.randomUUID())
         console.log("media url is", mediaURL)
         // Create the Post Object
-        const post : PostData = {
-            id : crypto.randomUUID(),
+        const post: PostData = {
+            id: crypto.randomUUID(),
             caption,
             fileType: mimeType,
-            isLiked : false,
-            mediaType : mimeType == "video/mp4" ? "video" : "image",
-            likes : 0,
-            userHandle : user.fullHandle,
+            isLiked: false,
+            mediaType: mimeType == "video/mp4" ? "video" : "image",
+            likes: 0,
+            userHandle: user.fullHandle,
             mediaURL,
-            timestamp : Date.now(),
+            timestamp: Date.now(),
         }
         // save the post data to the db
         await Post(post)
 
         // get the internal and the external followers
         const followers = await getAllUsersFollowersByUserId(user.actorId);
-        let externalFollowers : Person[] = []
-        for(const follower of followers){
+        let externalFollowers: Person[] = []
+        console.log("the external followers are", externalFollowers);
+        for (const follower of followers) {
             if (!follower?.actorId) continue;
-            if(await isLocalUser(req, getHandleFromUri(follower?.actorId))){
-                // Do nothing since we will fetch the posts of local followers from the db withut concern of what has
-                // been posted
-                continue;
-            }else{
+            if (!await isLocalUser(req, getHandleFromUri(follower?.actorId))) {
+                console.log("Looking up foreign user", follower?.actorId);
                 const user = await LookupUser(getHandleFromUri(follower.followerId), req);
+                console.log("We found the evil outsider :(", user);
                 if (!user) continue;
                 externalFollowers.push(user);
             }
         }
-        if(externalFollowers.length !== 0 ){
+        if (externalFollowers.length !== 0) {
             await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, fileData, mediaURL, mimeType == "mp4" ? "video" : "image");
         }
-        res.status(202).json({message : "Successfully created post"})
+        res.status(202).json({ message: "Successfully created post" })
         next();
-    }catch(e){
+    } catch (e) {
         next(e)
     }
 })
 
 
-UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
-   const user = await FindUser(req.user as Profile) as User; 
-   const followers = await getAllUsersFollowingByUserId(user.actorId);
-   const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
-   let feed : PostData[] = []
-   const oldestPosts : number[] = []
-   for(const follower of followers){
-        if(!follower?.followerId) continue;
+UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
+    const user = await FindUser(req.user as Profile) as User;
+    const followers = await getAllUsersFollowingByUserId(user.actorId);
+    const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
+    let feed: PostData[] = []
+    const oldestPosts: number[] = []
+    for (const follower of followers) {
+        if (!follower?.followerId) continue;
         const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
         feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
-   }
+    }
 
-   feed.sort((a, b)=>{
-      return b.timestamp - a.timestamp
-   })
+    feed.sort((a, b) => {
+        return b.timestamp - a.timestamp
+    })
 
-   // Getting the new cursor is a fucked up problem that I don't want to think about
-   // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
-   const newCursor = oldestPosts.length !== 0  ?  oldestPosts.reduce((prev, curr)=> curr > prev ? curr : prev) : -1
-   res.json({
+    // Getting the new cursor is a fucked up problem that I don't want to think about
+    // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
+    const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : -1
+    res.json({
         posts: feed,
-        nextCursor: (feed.length > 0) ? newCursor : -1  
-   })
+        nextCursor: (feed.length > 0) ? newCursor : -1
+    })
 })
 
 UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
@@ -270,11 +269,11 @@ UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
 });
 
 
-function getOldestPost(posts : PostData[]){
-    if(posts.length == 0) return null;
-    let currMin= posts[0];
-    for(const post of posts){
-        if(post.timestamp < currMin.timestamp){
+function getOldestPost(posts: PostData[]) {
+    if (posts.length == 0) return null;
+    let currMin = posts[0];
+    for (const post of posts) {
+        if (post.timestamp < currMin.timestamp) {
             currMin = post;
         }
     }
@@ -282,47 +281,47 @@ function getOldestPost(posts : PostData[]){
 }
 
 UserRouter.get('/platform/users/me/follows/:userHandle', async (req, res, next) => {
-  try {
-    if (!req.user) throw new ValidationError("Authentication required.");
-    if (!RegExp("@.+@.+").test(req.params.userHandle)) {
-      throw new ValidationError("Invalid user handle provided");
+    try {
+        if (!req.user) throw new ValidationError("Authentication required.");
+        if (!RegExp("@.+@.+").test(req.params.userHandle)) {
+            throw new ValidationError("Invalid user handle provided");
+        }
+
+        const currentUser = await FindUser(req.user as Profile);
+        if (!currentUser) throw new NotFoundError("Current user not found.");
+
+        const targetUser = await LookupUser(req.params.userHandle, req);
+        if (!targetUser || !targetUser.id) throw new NotFoundError("Target user not found.");
+
+        const userFollowsTarget = await isFollowing(currentUser.actorId, targetUser.id.href);
+        const targetFollowsUser = await isFollowing(targetUser.id.href, currentUser.actorId);
+
+        res.json({
+            userFollowing: {
+                follower: currentUser.actorId,
+                followee: targetUser.id.href,
+                follows: userFollowsTarget
+            },
+            userFollowedBy: {
+                follower: targetUser.id.href,
+                followee: currentUser.actorId,
+                follows: targetFollowsUser
+            }
+        });
+        next();
+
+    } catch (e) {
+        next(e);
     }
-
-    const currentUser = await FindUser(req.user as Profile);
-    if (!currentUser) throw new NotFoundError("Current user not found.");
-
-    const targetUser = await LookupUser(req.params.userHandle, req);
-    if (!targetUser || !targetUser.id) throw new NotFoundError("Target user not found.");
-
-    const userFollowsTarget = await isFollowing(currentUser.actorId, targetUser.id.href);
-    const targetFollowsUser = await isFollowing(targetUser.id.href, currentUser.actorId);
-
-    res.json({
-      userFollowing: {
-        follower: currentUser.actorId,
-        followee: targetUser.id.href,
-        follows: userFollowsTarget
-      },
-      userFollowedBy: {
-        follower: targetUser.id.href,
-        followee: currentUser.actorId,
-        follows: targetFollowsUser
-      }
-    });
-    next();
-
-  } catch (e) {
-    next(e);
-  }
 });
 
 UserRouter.get('/platform/users/me/posts/count', async (req, res, next) => {
-  try {
-    const user = await FindUser(req.user as Profile);
-    if (!user) throw new NotFoundError("Current user not found.");
-    const postCount = await countPostsByUserHandle(user.fullHandle);
-    return res.json({ count: postCount });
-  } catch (e) {
-    next(e);
-  }
+    try {
+        const user = await FindUser(req.user as Profile);
+        if (!user) throw new NotFoundError("Current user not found.");
+        const postCount = await countPostsByUserHandle(user.fullHandle);
+        return res.json({ count: postCount });
+    } catch (e) {
+        next(e);
+    }
 });

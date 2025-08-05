@@ -161,7 +161,7 @@ jobs:
           '
 
   build-api:
-    name: Build API
+    name: Move over API
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -170,32 +170,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install required dependencies
-        run: npm install
-        working-directory: mastointstatok-backend
-      
-      - name: Compile Typescript to Javascript
-        run: npm run build
-        working-directory: mastointstatok-backend
-
       - name: Package application
-        working-directory: mastointstatok-backend
         run: |
           mkdir -p api-build
-          cp -r dist api-build/
-          cp package.json api-build/
+          cp -r mastointstatok-backend api-build/
           zip -r api-build.zip api-build
           
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: api-build
-          path: mastointstatok-backend/api-build.zip
+          path: api-build.zip
 
   deploy-api:
     name: Deploy API to EC2
@@ -257,18 +242,59 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
             unzip -o api-build.zip &&
 
-            cd api-build/ &&
+            cd api-build/mastointstatok-backend/ &&
 
             npm install &&
+
+            npm install typescript
             
             # Stop and delete existing pm2 process if it exists
             if pm2 list | grep -q "mastoinstatok-api"; then
               pm2 delete mastoinstatok-api;
             fi &&
             
-            cd dist &&
-            pm2 start index.js --name mastoinstatok-api
+            pm2 start npm --name mastoinstatok-api -- run prod
           '
+  restart-pm2:
+    name: Restart PM2
+    permissions:
+      id-token: write
+      contents: read
+    needs: 
+      - deploy-api
+      - terraform
+      - issue-certificates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::804180393465:role/github-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get secrets from AWS Key Store
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            EC2_PRIVATE_KEY, privatekey
+
+      - name: Setup private key
+        run: |
+          echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
+          chmod 0500 privatekey.pem
+      
+      - name: Restart
+        run: |
+          EC2_HOST=${{ needs.terraform.outputs.ec2host }}
+          
+          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
+            cd api-build/mastointstatok-backend/ &&
+
+            pm2 delete mastoinstatok-api &&
+            
+            pm2 start npm --name mastoinstatok-api -- run prod
+          '
+
   setup-databases:
       name: Setup MongoDB and Redis
       permissions:
