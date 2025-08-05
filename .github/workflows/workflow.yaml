@@ -246,17 +246,14 @@ jobs:
 
             npm install &&
 
-            npm install typescript &&
-
-            npm run build &&
+            npm install typescript
             
             # Stop and delete existing pm2 process if it exists
             if pm2 list | grep -q "mastoinstatok-api"; then
               pm2 delete mastoinstatok-api;
             fi &&
             
-            cd dist &&
-            pm2 start index.js --name mastoinstatok-api
+            pm2 start npm --name mastoinstatok-api -- run prod
           '
   setup-databases:
       name: Setup MongoDB and Redis
