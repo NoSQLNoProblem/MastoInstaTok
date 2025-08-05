@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext"
 export default function AuthPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const scrolliosisLogo = '/scrolliosis-logo.png'
 
   useEffect(() => {
     // If the user is already authenticated, redirect them to the feed
@@ -37,12 +38,15 @@ export default function AuthPage() {
     <div className={styles.container}>
       <div className={styles.authCard}>
         <div className={styles.logo}>
-          <h1>🦕🫵‼️</h1>
+          <img className={styles.applogo} src={scrolliosisLogo} />
         </div>
+        <h1 className={styles.slogan}>One more scroll. Just one. Okay two.</h1>
+
         <div className={styles.divider}>
           <span>Login or Register with Google</span>
         </div>
         <button onClick={handleGoogleAuth} className={styles.googleButton}>
+          <img src="/google-logo.svg" alt="Google logo" className={styles.googleIcon} />
           <span>Continue with Google</span>
         </button>
       </div>

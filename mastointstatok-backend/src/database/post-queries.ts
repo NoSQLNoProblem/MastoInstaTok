@@ -19,3 +19,7 @@ export async function getPostById(id : string){
 export async function getRecentPostsByUserHandle(userHandle : string, cursorTimestamp : number){
     return postsCollection.find<PostData>({userHandle, timestamp:{$lt:cursorTimestamp}}).sort({_id:-1}).limit(10).toArray()
 }
+
+export async function countPostsByUserHandle(userHandle: string): Promise<number> {
+  return await postsCollection.countDocuments({ userHandle });
+}

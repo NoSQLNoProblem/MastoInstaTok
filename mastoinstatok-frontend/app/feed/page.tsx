@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react"; // 👈 1. Import useRef
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import Post from "@/components/Post";
@@ -10,7 +10,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { PostData } from "@/types/post";
 const PAGE_SIZE = 5;
 
-export async function fetchPostsApi(offset: number) {
+export async function fetchPostsApi(cursor: number) {
    // THIS IS FOR TESTING VIA MOCKS
         //==========================================
         // const response = await fetch(
@@ -22,9 +22,8 @@ export async function fetchPostsApi(offset: number) {
         // const data = await response.json();
         //===========================================
 
-        const data = await apiService.get(
-          `/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`
-        );
+  const endpoint = cursor === 0 ? `/platform/users/me/feed` : `/platform/users/me/feed?cursor=${cursor}`;
+  const data = await apiService.get(endpoint);
 
   return { items: data.posts, nextOffset: data.nextOffset };
 }

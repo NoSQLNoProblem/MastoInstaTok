@@ -4,15 +4,14 @@ import { FindUserByUserHandle, isLocalUser, LookupUser } from '../services/user-
 import { FindUser, UpdateUser } from '../database/user-queries.js';
 import { getHandleFromUri, GetOrderedCollectionPage } from '../services/follow-service.js';
 import { createContext, sendFollow, sendNoteToExternalFollowers, sendUnfollow } from '../federation.js';
-import { AddFollower, AddFollowing, getAllUsersFollowersByUserId, getInternalUsersFollowersByUserId, isFollowing, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
+import { AddFollower, AddFollowing, getAllUsersFollowersByUserId, getAllUsersFollowingByUserId, getInternalUsersFollowersByUserId, isFollowing, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
 import type { FileType, Follower, PostData, User } from '../types.js';
 import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js';
 import { nodeInfoToJson, Person } from '@fedify/fedify';
 import { getFollowRecordByActors } from '../database/object-queries.js';
 import { uploadToS3 } from '../lib/s3.js';
-import { getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
+import { countPostsByUserHandle, getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
 import crypto from 'crypto'
-
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
@@ -54,6 +53,22 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
         user.bio = bio;
         res.json(await UpdateUser(user));
         next()
+    }
+    catch (e) {
+        next(e)
+    }
+})
+
+UserRouter.put('/platform/users/me', async (req, res, next) => {
+    try {
+        console.log(req.user);
+        
+        const user = await FindUser(req.user as Profile) as User
+        const { displayName, bio } = req.body;
+        if (!displayName || !bio) throw new ValidationError()
+        user.displayName = displayName;
+        user.bio = bio;
+        res.json(await UpdateUser(user));
     }
     catch (e) {
         next(e)
@@ -154,15 +169,18 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
     }
 })
 
-UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
+UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
+        console.log("getting the request")
         const mimeType = req.body.fileType;
+        console.log(mimeType)
         if (mimeType !== "image/png" && mimeType !== "image/jpeg" && mimeType !== "video/mp4") {
             throw new ValidationError();
         }
         const fileData = req.body.data;
         const caption = req.body.caption;
         const user = await FindUser(req.user as Profile) as User; // This assertion is valid because we have passed the authentication middleware
+        console.log("Found the user at least");
         const mediaURL = await uploadToS3(fileData, mimeType, `bbd-grad-project-mastoinstatok-bucket`,  crypto.randomUUID())
         console.log("media url is", mediaURL)
         // Create the Post Object
@@ -171,7 +189,7 @@ UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
             caption,
             fileType: mimeType,
             isLiked : false,
-            mediaType : mimeType == "mp4" ? "video" : "image",
+            mediaType : mimeType == "video/mp4" ? "video" : "image",
             likes : 0,
             userHandle : user.fullHandle,
             mediaURL,
@@ -205,33 +223,52 @@ UserRouter.post("/platform/users/:userHandle/posts", async (req, res, next) => {
     }
 })
 
+
 UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
    const user = await FindUser(req.user as Profile) as User; 
-   const followers = await getAllUsersFollowersByUserId(user.actorId);
-   console.log("made it here")
+   const followers = await getAllUsersFollowingByUserId(user.actorId);
    const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
    let feed : PostData[] = []
    const oldestPosts : number[] = []
    for(const follower of followers){
         if(!follower?.followerId) continue;
-        console.log(cursor);
-        const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followerId), cursor);
+        const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
         feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
    }
 
-   feed.toSorted((a, b)=>{
-      return a.timestamp - b.timestamp
+   feed.sort((a, b)=>{
+      return b.timestamp - a.timestamp
    })
 
    // Getting the new cursor is a fucked up problem that I don't want to think about
    // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
-   const newCursor = oldestPosts.reduce((prev, curr)=> curr > prev ? curr : prev)
+   const newCursor = oldestPosts.length !== 0  ?  oldestPosts.reduce((prev, curr)=> curr > prev ? curr : prev) : -1
    res.json({
         posts: feed,
-        nextCursor: (feed.length > 0) ? newCursor : undefined  
+        nextCursor: (feed.length > 0) ? newCursor : -1  
    })
 })
+
+UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
+    console.log("here");
+    try {
+        const user = await FindUser(req.user as Profile) as User;
+        const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string);
+        const posts = await getRecentPostsByUserHandle(user.fullHandle, cursor);
+        const sortedPosts = posts.slice().sort((a, b) => b.timestamp - a.timestamp);
+        const nextCursor = sortedPosts.length > 0
+            ? sortedPosts[sortedPosts.length - 1].timestamp
+            : undefined;
+        res.json({
+            posts: sortedPosts,
+            nextCursor: (sortedPosts.length > 0) ? nextCursor : -1
+        });
+    } catch (e) {
+        next(e);
+    }
+});
+
 
 function getOldestPost(posts : PostData[]){
     if(posts.length == 0) return null;
@@ -279,3 +316,13 @@ UserRouter.get('/platform/users/me/follows/:userHandle', async (req, res, next) 
   }
 });
 
+UserRouter.get('/platform/users/me/posts/count', async (req, res, next) => {
+  try {
+    const user = await FindUser(req.user as Profile);
+    if (!user) throw new NotFoundError("Current user not found.");
+    const postCount = await countPostsByUserHandle(user.fullHandle);
+    return res.json({ count: postCount });
+  } catch (e) {
+    next(e);
+  }
+});

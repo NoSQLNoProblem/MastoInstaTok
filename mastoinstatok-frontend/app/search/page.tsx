@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Navigation from "@/components/Navigation"
 import UserCard from "@/components/UserCard"
 import styles from "./search.module.css"
 import { apiService } from "@/services/apiService"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface User {
   actorId: string
@@ -23,6 +25,14 @@ export default function SearchPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -12,9 +12,21 @@ import session from "express-session"
 import "dotenv/config"
 import { CreateUser } from "./services/user-service.js"
 import { FindUser, FindUserByUri } from "./database/user-queries.js" 
+import express from "express";
+import { integrateFederation } from "@fedify/express";
+import federation from "./federation.js";
+import { AuthRouter } from "./routes/auth-routes.js";
+import passport, { type Profile } from "passport";
+import { Strategy as GoogleStrategy, type VerifyCallback } from 'passport-google-oauth20';
+import session from 'express-session';
+import 'dotenv/config'
+import { CreateUser } from "./services/user-service.js";
+import { UserRouter } from "./routes/user-routes.js";
 import cors from "cors";
 import { errorHandler } from "./middleware/error-middleware.js";
 import { PostRouter } from "./routes/post-routes.js";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { configure, getConsoleSink } from "@logtape/logtape";
 import { MongoCryptCreateEncryptedCollectionError } from "mongodb"
 import { Like } from "@fedify/fedify"
 
@@ -22,7 +34,14 @@ const logger = getLogger("mastointstatok-backend")
 
 export const app = express()
 
-
+await configure({
+  sinks: { console: getConsoleSink() },
+  loggers: [
+    { category: "your-app", sinks: ["console"], lowestLevel: "debug" },
+    { category: "fedify",   sinks: ["console"], lowestLevel: "error" },
+  ],
+  contextLocalStorage: new AsyncLocalStorage(),
+});
 
 const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za'];
     app.use(cors({
@@ -98,6 +117,8 @@ app.use(passport.session())
 app.use("/api", AuthRouter, errorHandler);
 app.use("/api", UserRouter, errorHandler);
 app.use("/api", PostRouter, errorHandler)
+
+app.use(integrateFederation(federation, (req) =>  req.user));
 app.use("/api", CommentsRouter, errorHandler);
 app.use("/api", LikesRouter, errorHandler);
 

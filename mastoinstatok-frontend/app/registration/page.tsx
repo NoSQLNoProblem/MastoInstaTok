@@ -71,7 +71,7 @@ export default function RegistrationPage() {
     <div className={styles.container}>
       <div className={styles.registrationCard}>
         <button onClick={logout} className={styles.logoutButton} aria-label="Logout">
-          Logout🚪
+          ⏪ Logout 
         </button>
 
         <h1 className={styles.title}>Choose Your Display Name</h1>
