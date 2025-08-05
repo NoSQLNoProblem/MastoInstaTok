@@ -246,6 +246,8 @@ jobs:
 
             npm install &&
 
+            npm install typescript &&
+
             npm run build &&
             
             # Stop and delete existing pm2 process if it exists
