@@ -201,11 +201,9 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         // get the internal and the external followers
         const followers = await getAllUsersFollowersByUserId(user.actorId);
         let externalFollowers: Person[] = []
-        console.log("the external followers are", externalFollowers);
         for (const follower of followers) {
-            if (!follower?.actorId) continue;
-            if (!await isLocalUser(req, getHandleFromUri(follower?.actorId))) {
-                console.log("Looking up foreign user", follower?.actorId);
+            if (!follower?.followerId) continue;
+            if (!isLocalUser(req, getHandleFromUri(follower?.followerId))) {
                 const user = await LookupUser(getHandleFromUri(follower.followerId), req);
                 console.log("We found the evil outsider :(", user);
                 if (!user) continue;
