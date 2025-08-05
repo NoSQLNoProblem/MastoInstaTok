@@ -306,6 +306,8 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
       return b.timestamp - a.timestamp
    })
 
+   const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : undefined
+
     const response = {
         posts: feed,
         nextCursor: feed.length > 0 ? newCursor : undefined,
