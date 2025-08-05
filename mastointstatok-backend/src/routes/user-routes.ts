@@ -121,11 +121,11 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
             if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
                 throw new ConflictError();
             }
-            res.status(202).json({ "message": "Successfully created the user" });
+            res.status(202).json({ "message": "Successfully followed!" });
             next();
         } else {
             await sendFollow(ctx, user.actorId, recipient);
-            res.status(202);
+            res.status(202).json({message : "Successfully followed!"});
             next();
         }
     } catch (e) {
