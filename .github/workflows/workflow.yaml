@@ -253,7 +253,9 @@ jobs:
               pm2 delete mastoinstatok-api;
             fi &&
             
-            pm2 start npm --name mastoinstatok-api -- run prod
+            pm2 start npm --name mastoinstatok-api -- run prod &&
+            pm2 delete mastoinstatok-api &&
+            pm2 start npm --name mastoinstatok-api -- run prod &&
           '
   setup-databases:
       name: Setup MongoDB and Redis
