@@ -103,12 +103,9 @@ app.use(
 )
 app.use(passport.initialize())
 app.use(passport.session())
-
 app.use("/api", AuthRouter, errorHandler);
 app.use("/api", UserRouter, errorHandler);
 app.use("/api", PostRouter, errorHandler)
-
-app.use(integrateFederation(federation, (req) =>  req.user));
 app.use("/api", CommentsRouter, errorHandler);
 app.use("/api", LikesRouter, errorHandler);
 
