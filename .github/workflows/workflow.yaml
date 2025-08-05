@@ -256,12 +256,13 @@ jobs:
             pm2 start npm --name mastoinstatok-api -- run prod
           '
   restart-pm2:
-    name: Deploy API to EC2
+    name: Restart PM2
     permissions:
       id-token: write
       contents: read
     needs: 
       - deploy-api
+      - terraform
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
