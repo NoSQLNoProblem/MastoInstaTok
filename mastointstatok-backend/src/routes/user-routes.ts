@@ -204,6 +204,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         for (const follower of followers) {
             if (!follower?.followerId) continue;
             if (!isLocalUser(req, getHandleFromUri(follower?.followerId))) {
+                console.log("looking up external user with handle" , getHandleFromUri(follower.followerId))
                 const user = await LookupUser(getHandleFromUri(follower.followerId), req);
                 console.log("We found the evil outsider :(", user);
                 if (!user) continue;

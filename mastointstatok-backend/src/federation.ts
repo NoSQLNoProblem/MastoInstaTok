@@ -392,7 +392,7 @@ export async function sendNoteToExternalFollowers(
   })
 
   await ctx.sendActivity(
-    { identifier: senderId },
+    { identifier: sender.identifier },
     recipients,
     create
   );
