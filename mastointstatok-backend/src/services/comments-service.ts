@@ -1,8 +1,8 @@
-import type { Profile } from "passport"
-import { FindUser, FindUserByGoogleId } from "../database/user-queries.js"
+import { FindUserByUri } from "../database/user-queries.js"
 import client from "../lib/mongo.js"
 import type { CommentDocument } from "../types/PostTypes.js"
 import { ObjectId } from "mongodb"
+import type { User } from "../types.js"
 
 const db = client.db("app_db")
 const commentsCollection = db.collection<CommentDocument>("comments")
@@ -14,15 +14,14 @@ const commentsCollection = db.collection<CommentDocument>("comments")
  * @param content The content of the comment.
  * @returns The newly created comment document.
  */
-export async function AddComment(userProfile: Profile, postId: string, content: string): Promise<CommentDocument> {
+export async function AddComment(user: User | null, postId: string, content: string): Promise<CommentDocument> {
   const newComment: CommentDocument = {
-    userId: userProfile.id,
+    userId: user!.actorId,
     postId,
     content,
     createdAt: new Date(),
   }
   const result = await commentsCollection.insertOne(newComment)
-  const user = await FindUser(userProfile)
   const displayableName = user?.displayName || user?.username || "Unknown User"
   return { ...newComment, _id: result.insertedId, displayName: displayableName  }
 }
@@ -37,12 +36,12 @@ export async function GetCommentsForPost(postId: string): Promise<CommentDocumen
   const comments = await commentsCollection.find({ postId }).sort({ createdAt: 1 }).toArray()
 
   const uniqueUserIds = [...new Set(comments.map((comment) => comment.userId))]
-  const users = await Promise.all(uniqueUserIds.map((userId) => FindUserByGoogleId(userId)))
+  const users = await Promise.all(uniqueUserIds.map((userId) => FindUserByUri(userId)))
   
   const userDisplayNameMap = new Map<string, string>()
   users.forEach((user) => {
     if (user) {
-      userDisplayNameMap.set(user.googleId ?? "", user.displayName || user.username || "Unknown User")
+      userDisplayNameMap.set(user.actorId ?? "", user.displayName || user.username || "Unknown User")
     }
   })
 
