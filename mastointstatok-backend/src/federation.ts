@@ -145,7 +145,15 @@ federation
       to: follow.actorId
     })
     AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
-  });
+  }).on(Accept, async (ctx, accept)=>{
+    if(!accept || !accept.id || !accept.objectId || !accept.actorId) return;
+    insertAcceptRecord({
+      id: accept.id,
+      actor: accept.objectId,
+      object: await accept.getObject() as Follow,
+      to : accept.actorId
+    });
+  })
 
 federation.setObjectDispatcher(
   Accept,
