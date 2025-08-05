@@ -54,10 +54,9 @@ passport.use(
     },
     async (req, accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
       try {
-        const user = await CreateUser(profile, `${req.protocol}://${req.get("host")}`)
-        return done(null, user)
+        await CreateUser(profile, `${req.protocol}://${req.get("host")}`)
+        return done(null, profile)
       } catch (error) {
-        console.error("Error in GoogleStrategy callback:", error)
         return done(error)
       }
     },
@@ -70,25 +69,8 @@ passport.serializeUser((user: any, done) => {
   done(null, user.actorId)
 })
 
-passport.deserializeUser(async (actorId: string, done) => {
-  console.log("=== DESERIALIZE USER DEBUG ===") //TODO: cleanup on isle whatever this is. 
-  console.log("actorId from session:", actorId)
-
-  try {
-    const user = await FindUserByUri(actorId)
-    console.log("User found by FindUserByUri (deserialize):", user)
-
-    if (user) {
-      done(null, user)
-    } else {
-      console.log("User not found in DB during deserialization for actorId:", actorId)
-      done(null, false)
-    }
-  } catch (error) {
-    console.error("Error during deserializeUser:", error)
-    done(error, null)
-  }
-})
+passport.serializeUser((user, done) => done(null, user as Express.User));
+passport.deserializeUser((obj, done) => done(null, obj as Express.User));
 
 app.use(
   session({
