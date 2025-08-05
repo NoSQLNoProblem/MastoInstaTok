@@ -9,10 +9,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePagination } from "@/hooks/usePagination";
 import { PostData } from "@/types/post";
 import { apiService } from "@/services/apiService";
+import EditProfileModal from "@/components/EditProfileModal";
+import { User } from "@/types/auth-context";
 import CommentModal from "@/components/CommentModal";
 
 async function fetchMyPostsApi(cursor: number) {
-// THIS IS FOR TESTING VIA MOCKS
+  // THIS IS FOR TESTING VIA MOCKS
   //==========================================
   // const response = await fetch(
   //   `/api/feed?startIndex=${offset}&pageSize=${PAGE_SIZE}`,
@@ -23,7 +25,10 @@ async function fetchMyPostsApi(cursor: number) {
   // const data = await response.json();
   //===========================================
 
-  const endpoint = cursor === 0 ? `/platform/users/me/posts` : `/platform/users/me/posts?cursor=${cursor}`;
+  const endpoint =
+    cursor === 0
+      ? `/platform/users/me/posts`
+      : `/platform/users/me/posts?cursor=${cursor}`;
   const data = await apiService.get(endpoint);
   return { items: data.posts, nextOffset: data.nextCursor };
 }
@@ -35,7 +40,9 @@ export default function ProfilePage() {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
   const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const [profile, setProfile] = useState<User | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
 
   const {
     items: posts,
@@ -47,12 +54,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfileStats = async () => {
-      if (isAuthenticated && user?.fullHandle) {
+      if (isAuthenticated && user) {
+        
+        setProfile(user);
         try {
           const [followersRes, followingRes, postsRes] = await Promise.all([
             apiService.get(`/platform/users/${user.fullHandle}/followers`),
             apiService.get(`/platform/users/${user.fullHandle}/following`),
-            apiService.get(`/platform/users/me/posts/count`)
+            apiService.get(`/platform/users/me/posts/count`),
           ]);
           setFollowersCount(followersRes.totalItems?.toString() || "0");
           setFollowingCount(followingRes.totalItems?.toString() || "0");
@@ -70,11 +79,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-        fetchNext();
+      fetchNext();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
-  
+
   useEffect(() => {
     const handleScroll = () => {
       if (
@@ -96,6 +105,30 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  const handleSaveProfile = async (updatedData: {
+    displayName: string;
+    bio: string;
+  }) => {
+    if (!profile) return;
+
+    const updatedProfile = {
+      ...profile,
+      displayName: updatedData.displayName,
+      bio: updatedData.bio,
+    };
+    try {
+      const savedProfile = await apiService.put(
+        "/platform/users/me",
+        {displayName: updatedProfile.displayName, bio: updatedProfile.bio},
+      );
+      setProfile(savedProfile);
+      
+      setShowEditModal(false);
+      refreshUser();
+    } catch (error) {
+      alert("Failed to update profile. Please try again.");
+    }
+  };
 
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -129,8 +162,8 @@ export default function ProfilePage() {
             <div className={styles.avatarSection}>
               <div className={styles.avatar}>
                 <img
-                  src={user?.avatarURL || "/placeholder.svg"}
-                  alt={user?.displayName || "User"}
+                  src={profile?.avatarURL || "/placeholder.svg"}
+                  alt={profile?.displayName || "User"}
                   className={styles.avatarImage}
                 />
               </div>
@@ -138,7 +171,12 @@ export default function ProfilePage() {
             <div className={styles.profileInfo}>
               <div className={styles.usernameRow}>
                 <h1 className={styles.username}>{user?.displayName}</h1>
-                <button className={styles.editButton}>Edit Profile</button>
+                <button
+                  className={styles.editButton}
+                  onClick={() => setShowEditModal(true)}
+                >
+                  Edit Profile
+                </button>
               </div>
 
               <div className={styles.stats}>
@@ -157,8 +195,8 @@ export default function ProfilePage() {
               </div>
 
               <div className={styles.bio}>
-                <p className={styles.fullHandle}>{user?.fullHandle}</p>
-                <p className={styles.bioText}>{user?.bio}</p>
+                <p className={styles.fullHandle}>{profile?.fullHandle}</p>
+                <p className={styles.bioText}>{profile?.bio}</p>
               </div>
             </div>
           </header>
@@ -189,9 +227,9 @@ export default function ProfilePage() {
                     onClick={() => setSelectedPost(post)}
                   >
                     {post.mediaType === "video" ? (
-                       <video className={styles.postImage}>
-                           <source src={post.mediaURL + "#t=1"} type="video/mp4" />
-                       </video>
+                      <video className={styles.postImage}>
+                        <source src={post.mediaURL + "#t=1"} type="video/mp4" />
+                      </video>
                     ) : (
                       <img
                         src={post.mediaURL || "/placeholder.svg"}
@@ -230,7 +268,7 @@ export default function ProfilePage() {
             <div className={styles.modalImage}>
               {selectedPost?.mediaType === "video" ? (
                 <video controls autoPlay={false}>
-                    <source src={selectedPost?.mediaURL} type="video/mp4" />
+                  <source src={selectedPost?.mediaURL} type="video/mp4" />
                 </video>
               ) : (
                 <img
@@ -271,7 +309,22 @@ export default function ProfilePage() {
                 />
               )}
         </div>
+      )}
 
+      {showEditModal && profile && (
+        <EditProfileModal
+          profile={profile}
+          onSave={handleSaveProfile}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {showEditModal && profile && (
+        <EditProfileModal
+          profile={profile}
+          onSave={handleSaveProfile}
+          onClose={() => setShowEditModal(false)}
+        />
       )}
     </div>
   );
