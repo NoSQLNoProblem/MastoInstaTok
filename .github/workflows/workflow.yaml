@@ -161,7 +161,7 @@ jobs:
           '
 
   build-api:
-    name: Move over PI
+    name: Move over API
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -180,7 +180,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: api-build
-          path: mastointstatok-backend/api-build.zip
+          path: api-build.zip
 
   deploy-api:
     name: Deploy API to EC2
