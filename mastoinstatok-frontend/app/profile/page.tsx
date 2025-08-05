@@ -318,14 +318,6 @@ export default function ProfilePage() {
           onClose={() => setShowEditModal(false)}
         />
       )}
-
-      {showEditModal && profile && (
-        <EditProfileModal
-          profile={profile}
-          onSave={handleSaveProfile}
-          onClose={() => setShowEditModal(false)}
-        />
-      )}
     </div>
   );
 }
