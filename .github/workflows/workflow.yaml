@@ -288,13 +288,9 @@ jobs:
           EC2_HOST=${{ needs.terraform.outputs.ec2host }}
           
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
-            sleep 30
             cd api-build/mastointstatok-backend/ &&
 
-            # Stop and delete existing pm2 process if it exists
-            if pm2 list | grep -q "mastoinstatok-api"; then
-              pm2 delete mastoinstatok-api;
-            fi &&
+            pm2 delete mastoinstatok-api &&
             
             pm2 start npm --name mastoinstatok-api -- run prod
           '
