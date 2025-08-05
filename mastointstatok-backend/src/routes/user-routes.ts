@@ -59,6 +59,22 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
     }
 })
 
+UserRouter.put('/platform/users/me', async (req, res, next) => {
+    try {
+        console.log(req.user);
+        
+        const user = await FindUser(req.user as Profile) as User
+        const { displayName, bio } = req.body;
+        if (!displayName || !bio) throw new ValidationError()
+        user.displayName = displayName;
+        user.bio = bio;
+        res.json(await UpdateUser(user));
+    }
+    catch (e) {
+        next(e)
+    }
+})
+
 UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
     try {
         if (!RegExp("@.+@.+").test(req.params.user)) {
