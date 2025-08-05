@@ -263,6 +263,7 @@ jobs:
     needs: 
       - deploy-api
       - terraform
+      - issue-certificates
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -282,11 +283,12 @@ jobs:
           echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
           chmod 0500 privatekey.pem
       
-      - name: Deploy
+      - name: Restart
         run: |
           EC2_HOST=${{ needs.terraform.outputs.ec2host }}
           
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
+            sleep 30
             cd api-build/mastointstatok-backend/ &&
 
             # Stop and delete existing pm2 process if it exists
