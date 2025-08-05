@@ -40,7 +40,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
 
   const {
     items: posts,
@@ -114,14 +114,15 @@ export default function ProfilePage() {
       displayName: updatedData.displayName,
       bio: updatedData.bio,
     };
-
     try {
       const savedProfile = await apiService.put(
         "/platform/users/me",
-        updatedProfile
+        {displayName: updatedProfile.displayName, bio: updatedProfile.bio},
       );
       setProfile(savedProfile);
+      
       setShowEditModal(false);
+      refreshUser();
     } catch (error) {
       alert("Failed to update profile. Please try again.");
     }
@@ -159,8 +160,8 @@ export default function ProfilePage() {
             <div className={styles.avatarSection}>
               <div className={styles.avatar}>
                 <img
-                  src={user?.avatarURL || "/placeholder.svg"}
-                  alt={user?.displayName || "User"}
+                  src={profile?.avatarURL || "/placeholder.svg"}
+                  alt={profile?.displayName || "User"}
                   className={styles.avatarImage}
                 />
               </div>
@@ -192,8 +193,8 @@ export default function ProfilePage() {
               </div>
 
               <div className={styles.bio}>
-                <p className={styles.fullHandle}>{user?.fullHandle}</p>
-                <p className={styles.bioText}>{user?.bio}</p>
+                <p className={styles.fullHandle}>{profile?.fullHandle}</p>
+                <p className={styles.bioText}>{profile?.bio}</p>
               </div>
             </div>
           </header>
