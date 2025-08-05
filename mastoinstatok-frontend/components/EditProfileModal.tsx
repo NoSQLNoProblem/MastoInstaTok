@@ -65,9 +65,9 @@ export default function EditProfileModal({
             </div>
             <div className={styles.avatarInfo}>
               <h3 className={styles.username}>{profile.displayName}</h3>
-              <button type="button" className={styles.changePhotoButton}>
+              {/* <button type="button" className={styles.changePhotoButton}>
                 Change profile photo
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -77,8 +77,8 @@ export default function EditProfileModal({
             </label>
             <input
               type="text"
-              id="fullName"
-              name="fullName"
+              id="displayName"
+              name="displayName"
               value={formData.displayName}
               onChange={handleInputChange}
               className={styles.input}
