@@ -12,16 +12,6 @@ import session from "express-session"
 import "dotenv/config"
 import { CreateUser } from "./services/user-service.js"
 import { FindUser, FindUserByUri } from "./database/user-queries.js" 
-import express from "express";
-import { integrateFederation } from "@fedify/express";
-import federation from "./federation.js";
-import { AuthRouter } from "./routes/auth-routes.js";
-import passport, { type Profile } from "passport";
-import { Strategy as GoogleStrategy, type VerifyCallback } from 'passport-google-oauth20';
-import session from 'express-session';
-import 'dotenv/config'
-import { CreateUser } from "./services/user-service.js";
-import { UserRouter } from "./routes/user-routes.js";
 import cors from "cors";
 import { errorHandler } from "./middleware/error-middleware.js";
 import { PostRouter } from "./routes/post-routes.js";
