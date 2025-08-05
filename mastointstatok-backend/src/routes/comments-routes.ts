@@ -1,6 +1,7 @@
 import express from "express"
 import { AddComment, GetCommentsForPost, DeleteComment } from "../services/comments-service.js"
 import type { User } from "../types.js"
+import type { Profile } from "passport"
 
 export const CommentsRouter = express.Router()
 
@@ -8,16 +9,15 @@ export const CommentsRouter = express.Router()
 CommentsRouter.post("/comments", async (req, res) => {
   try {
     const { postId, content } = req.body
-    const user = req.user as User
-
-    if (!user || !user.actorId) {
+    const user = req.user as Profile
+    if (!user || !user.id) {
       return res.status(401).json({ error: "User not authenticated" })
     }
     if (!postId || !content) {
       return res.status(400).json({ error: "postId and content are required" })
     }
 
-    const comment = await AddComment(user.actorId, postId, content)
+    const comment = await AddComment(user, postId, content)
     res.status(201).json({ message: "Comment added successfully", comment })
   } catch (error) {
     console.error("Error adding comment:", error)
