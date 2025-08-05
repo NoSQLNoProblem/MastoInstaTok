@@ -242,7 +242,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
             unzip -o api-build.zip &&
 
-            cd api-build/ &&
+            cd api-build/mastointstatok-backend/ &&
 
             npm install &&
 
