@@ -32,3 +32,7 @@ export async function FindUserByUri(actorId: string) {
 export async function FindUserByUsername(username: string) {
   return await usersCollection.findOne<User>({ username })
 }
+
+export async function FindUserByGoogleId(googleId: string) {
+  return await usersCollection.findOne<User>({googleId})
+}

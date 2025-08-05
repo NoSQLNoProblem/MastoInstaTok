@@ -11,6 +11,7 @@ import { PostData } from "@/types/post";
 import { apiService } from "@/services/apiService";
 import EditProfileModal from "@/components/EditProfileModal";
 import { User } from "@/types/auth-context";
+import CommentModal from "@/components/CommentModal";
 
 async function fetchMyPostsApi(cursor: number) {
   // THIS IS FOR TESTING VIA MOCKS
@@ -36,6 +37,7 @@ export default function ProfilePage() {
   const [followersCount, setFollowersCount] = useState<string>("--");
   const [followingCount, setFollowingCount] = useState<string>("--");
   const [postCount, setPostCount] = useState<string>("--");
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
   const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
   const router = useRouter();
   const [profile, setProfile] = useState<User | null>(null);
@@ -296,9 +298,16 @@ export default function ProfilePage() {
               </div>
               <div className={styles.modalStats}>
                 <span>❤️ {selectedPost.likes} likes</span>
+                <span onClick={() => setIsCommentModalOpen(true)}>💬</span>
               </div>
             </div>
           </div>
+          {isCommentModalOpen && (
+                <CommentModal 
+                  postId={selectedPost.id} 
+                  onClose={() => setIsCommentModalOpen(false)} 
+                />
+              )}
         </div>
       )}
 

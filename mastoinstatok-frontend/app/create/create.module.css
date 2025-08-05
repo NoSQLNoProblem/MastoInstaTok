@@ -4,39 +4,39 @@
 }
 
 .main {
-  padding-top: 80px;
-  padding-bottom: 40px;
+  padding-top: 5rem;
+  padding-bottom: 2.5rem;
 }
 
 .createForm {
-  max-width: 600px;
+  max-width: 37.5rem;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 1.25rem;
 }
 
 .title {
   text-align: center;
   color: #333;
-  margin-bottom: 30px;
-  font-size: 24px;
+  margin-bottom: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 300;
 }
 
 .form {
   background: white;
-  border-radius: 8px;
-  padding: 30px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: .5rem;
+  padding: 1.875rem;
+  box-shadow: 0 .125rem .625rem rgba(0, 0, 0, 0.1);
 }
 
 .imageSection {
-  margin-bottom: 30px;
+  margin-bottom: 1.875rem;
 }
 
 .uploadArea {
-  border: 2px dashed #ddd;
-  border-radius: 8px;
-  padding: 60px 20px;
+  border: .125rem dashed #ddd;
+  border-radius: .5rem;
+  padding: 3.75rem 1.25rem;
   text-align: center;
   background: #fafafa;
   transition: border-color 0.3s ease;
@@ -56,43 +56,43 @@
 }
 
 .uploadIcon {
-  font-size: 48px;
-  margin-bottom: 15px;
+  font-size: 3rem;
+  margin-bottom: .9375rem;
 }
 
 .uploadLabel p {
-  margin: 5px 0;
+  margin: .3125rem 0;
   color: #333;
 }
 
 .uploadHint {
   color: #999 !important;
-  font-size: 14px;
+  font-size: .875rem;
 }
 
 .imagePreview {
   position: relative;
-  border-radius: 8px;
+  border-radius: .5rem;
   overflow: hidden;
 }
 
 .previewImage {
   width: 100%;
-  height: 400px;
+  height: 25rem;
   object-fit: cover;
   display: block;
 }
 
 .removeButton {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: .625rem;
+  right: .625rem;
   background: rgba(0, 0, 0, 0.7);
   color: white;
   border: none;
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -104,25 +104,25 @@
 }
 
 .captionSection {
-  margin-bottom: 30px;
+  margin-bottom: 1.875rem;
 }
 
 .captionLabel {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: .625rem;
   color: #333;
   font-weight: 500;
 }
 
 .captionInput {
   width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
+  padding: .75rem 1rem;
+  border: .0625rem solid #ddd;
+  border-radius: .25rem;
+  font-size: 1rem;
   font-family: inherit;
   resize: vertical;
-  min-height: 100px;
+  min-height: 6.25rem;
 }
 
 .captionInput:focus {
@@ -132,9 +132,9 @@
 
 .characterCount {
   text-align: right;
-  margin-top: 5px;
+  margin-top: .3125rem;
   color: #999;
-  font-size: 14px;
+  font-size: .875rem;
 }
 
 .submitButton {
@@ -142,9 +142,9 @@
   background: #4285f4;
   color: white;
   border: none;
-  padding: 15px;
-  border-radius: 4px;
-  font-size: 16px;
+  padding: .9375rem;
+  border-radius: .25rem;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.3s ease;
@@ -161,18 +161,18 @@
 
 @media (max-width: 768px) {
   .createForm {
-    padding: 0 10px;
+    padding: 0 .625rem;
   }
 
   .form {
-    padding: 20px;
+    padding: 1.25rem;
   }
 
   .uploadArea {
-    padding: 40px 20px;
+    padding: 2.5rem 1.25rem;
   }
 
   .uploadIcon {
-    font-size: 36px;
+    font-size: 2.25rem;
   }
 }
