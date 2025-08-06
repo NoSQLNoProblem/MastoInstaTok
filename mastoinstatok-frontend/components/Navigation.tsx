@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
 import styles from "./Navigation.module.css"
+import { House, LogOut, PersonStanding, Plus, Search } from 'lucide-react'
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -28,19 +29,24 @@ export default function Navigation() {
 
         <div className={styles.navLinks}>
           <Link href="/feed" className={`${styles.navLink} ${pathname === "/feed" ? styles.active : ""}`}>
-            🏠 Feed
+            <House/> 
+            Feed
           </Link>
           <Link href="/search" className={`${styles.navLink} ${pathname === "/search" ? styles.active : ""}`}>
-            🔍 Search
+            <Search/>
+            Search
           </Link>
           <Link href="/create" className={`${styles.navLink} ${pathname === "/create" ? styles.active : ""}`}>
-            ➕ Create
+            <Plus/>
+            Create
           </Link>
           <Link href="/profile" className={`${styles.navLink} ${pathname === "/profile" ? styles.active : ""}`}>
-            👤 Profile
+            <PersonStanding/>
+            Profile
           </Link>
           <button onClick={handleLogout} className={styles.logoutButton}>
-            ⏪ Logout
+            <LogOut/>
+            Logout
           </button>
         </div>
       </div>

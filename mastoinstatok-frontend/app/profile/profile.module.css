@@ -14,6 +14,34 @@
   padding: 0 1.25rem;
 }
 
+.handle {
+ border: 2px dashed #aaa;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f9f9f9;
+  gap: 1rem;
+  width:fit-content;
+}
+
+.copyButton {
+  color: grey;
+  transition: all 0.2s ease;
+  display: inline-block;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+}
+
+.copyButton:hover {
+  color: rgb(55, 53, 62);
+  transform: scale(1.1);
+}
+
 .loading,
 .error {
   display: flex;
@@ -135,6 +163,9 @@
 
 .bio {
   line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .fullName {

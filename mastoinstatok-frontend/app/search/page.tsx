@@ -7,6 +7,7 @@ import styles from "./search.module.css"
 import { apiService } from "@/services/apiService"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
+import { Search } from "lucide-react"
 
 interface User {
   actorId: string
@@ -114,7 +115,7 @@ export default function SearchPage() {
               className={styles.searchInput}
             />
             <button type="submit" className={styles.searchIcon}>
-              🔍
+              <Search color="grey"/>
             </button>
           </form>
 
