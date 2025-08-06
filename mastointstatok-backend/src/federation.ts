@@ -155,11 +155,14 @@ federation
       object: await accept.getObject() as Follow,
       to : accept.actorId
     });
+  }).on(Undo, async (ctx, undo)=>{
+    // Todo the undo following here
+    console.log(undo)
   })
 
 federation.setObjectDispatcher(
   Accept,
-  "/users/{userId}/accept/{acceptId}",
+  "/api/users/{userId}/accept/{acceptId}",
   async (ctx, { userId, acceptId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${acceptId}`);
     const acceptObject: AcceptObject | null = await getAcceptRecord(id);
@@ -174,7 +177,7 @@ federation.setObjectDispatcher(
 );
 
 federation.setObjectDispatcher(Follow,
-  "/users/{userId}/follows/{followId}",
+  "/api/users/{userId}/follows/{followId}",
   async (ctx, { userId, followId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/follows/${followId}`);
     const followObject: FollowObject | null = await getFollowRecord(id);
@@ -188,7 +191,7 @@ federation.setObjectDispatcher(Follow,
 )
 
 federation.setObjectDispatcher(Undo,
-  "/users/{userId}/undos/{undoId}",
+  "/api/users/{userId}/undos/{undoId}",
   async (ctx, { userId, undoId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/undos/${undoId}`);
     const undoObject: UndoObject | null = await getUndoRecord(id);
@@ -271,7 +274,7 @@ export async function sendUnfollow(
 }
 
 federation.setObjectDispatcher(Create,
-  "/users/{userId}/creates/{createId}",
+  "/api/users/{userId}/creates/{createId}",
   async (ctx, { userId, createId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/creates/${createId}`);
     const createObject: CreateObject | null = await getCreateRecord(id);
@@ -285,7 +288,7 @@ federation.setObjectDispatcher(Create,
 )
 
 federation.setObjectDispatcher(Note,
-  "/users/{userId}/notes/{noteId}",
+  "/api/users/{userId}/notes/{noteId}",
   async (ctx, { userId, noteId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/notes/${noteId}`);
     const noteObject: NoteObject | null = await getNoteRecord(id);
@@ -301,9 +304,8 @@ federation.setObjectDispatcher(Note,
   }
 )
 
-
 federation.setObjectDispatcher(Image,
-  "/users/{userId}/images/{imageId}",
+  "/api/users/{userId}/images/{imageId}",
   async (ctx, { userId, imageId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/images/${imageId}`);
     const attachment: Attachment | null = await getAttachmentRecord(id);
@@ -316,7 +318,7 @@ federation.setObjectDispatcher(Image,
 )
 
 federation.setObjectDispatcher(Video,
-  "/users/{userId}/videos/{videoId}",
+  "/api/users/{userId}/videos/{videoId}",
   async (ctx, { userId, videoId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/videos/${videoId}`);
     const attachment: Attachment | null = await getAttachmentRecord(id);
