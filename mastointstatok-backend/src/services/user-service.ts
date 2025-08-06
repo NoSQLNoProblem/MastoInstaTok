@@ -91,7 +91,7 @@ export async function LookupUser(userHandle: string, request : Request) {
   return actor;
 }
 
-export async function isLocalUser(request : Request, userHandle : string){
+export function isLocalUser(request : Request, userHandle : string){
   const handleSplit = userHandle.split("@")
   return request.hostname == handleSplit[handleSplit.length - 1].split(":")[0];
 }

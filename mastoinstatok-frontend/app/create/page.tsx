@@ -1,22 +1,29 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, use, useEffect, useContext } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useRef, use, useEffect, useContext } from "react";
+import { useRouter } from "next/navigation";
 
-import Navigation from "@/components/Navigation"
-import styles from "./create.module.css"
-import { apiService } from "@/services/apiService"
-
+import Navigation from "@/components/Navigation";
+import styles from "./create.module.css";
+import { apiService } from "@/services/apiService";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CreatePage() {
-  const [media, setMedia] = useState<string | null>(null)
-  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null)
-  const [caption, setCaption] = useState("")
-  const [isUploading, setIsUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
+  const [media, setMedia] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [caption, setCaption] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   // Maximum file size for uploads
   // will need to adjust for videos
@@ -29,7 +36,11 @@ export default function CreatePage() {
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : null;
+      const type = file.type.startsWith("video")
+        ? "video"
+        : file.type.startsWith("image")
+        ? "image"
+        : null;
       if (!type) return;
       setMediaType(type);
       const reader = new FileReader();
@@ -38,8 +49,7 @@ export default function CreatePage() {
       };
       reader.readAsDataURL(file);
     }
-  }
-
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +58,13 @@ export default function CreatePage() {
     setIsUploading(true);
 
     console.log(mediaType);
-    
+
     try {
       let fileType = "";
       if (media) {
-        const match = media.match(/^data:(image\/png|image\/jpeg|video\/mp4);base64,/);
+        const match = media.match(
+          /^data:(image\/png|image\/jpeg|video\/mp4);base64,/
+        );
         if (match) {
           fileType = match[1];
         } else if (mediaType === "image") {
@@ -61,7 +73,10 @@ export default function CreatePage() {
           fileType = "video/mp4";
         }
       }
-      if (!fileType || !["image/png", "image/jpeg", "video/mp4"].includes(fileType)) {
+      if (
+        !fileType ||
+        !["image/png", "image/jpeg", "video/mp4"].includes(fileType)
+      ) {
         alert("Only PNG, JPEG, or MP4 files are allowed.");
         setIsUploading(false);
         return;
@@ -69,9 +84,14 @@ export default function CreatePage() {
 
       // Remove data URL prefix before sending
       let base64Data = media;
-      const prefixMatch = media.match(/^data:(image\/png|image\/jpeg|video\/mp4);base64,/);
+      const prefixMatch = media.match(
+        /^data:(image\/png|image\/jpeg|video\/mp4);base64,/
+      );
       if (prefixMatch) {
-        base64Data = media.replace(/^data:(image\/png|image\/jpeg|video\/mp4);base64,/, "");
+        base64Data = media.replace(
+          /^data:(image\/png|image\/jpeg|video\/mp4);base64,/,
+          ""
+        );
       }
       await apiService.post("/platform/users/me/posts", {
         caption,
@@ -84,8 +104,7 @@ export default function CreatePage() {
     } finally {
       setIsUploading(false);
     }
-  }
-
+  };
 
   const removeMedia = () => {
     setMedia(null);
@@ -93,7 +112,7 @@ export default function CreatePage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }
+  };
 
   return (
     <div className={styles.container}>
@@ -118,17 +137,31 @@ export default function CreatePage() {
                   <label htmlFor="media-upload" className={styles.uploadLabel}>
                     <div className={styles.uploadIcon}>📷🎬</div>
                     <p>Click to upload an image or video</p>
-                    <p className={styles.uploadHint}>JPG, PNG, MP4 up to 10MB</p>
+                    <p className={styles.uploadHint}>
+                      JPG, PNG, MP4 up to 10MB
+                    </p>
                   </label>
                 </div>
               ) : (
                 <div className={styles.imagePreview}>
                   {mediaType === "image" ? (
-                    <img src={media || "/placeholder.svg"} alt="Preview" className={styles.previewImage} />
+                    <img
+                      src={media || "/placeholder.svg"}
+                      alt="Preview"
+                      className={styles.previewImage}
+                    />
                   ) : (
-                    <video src={media} controls className={styles.previewImage} />
+                    <video
+                      src={media}
+                      controls
+                      className={styles.previewImage}
+                    />
                   )}
-                  <button type="button" onClick={removeMedia} className={styles.removeButton}>
+                  <button
+                    type="button"
+                    onClick={removeMedia}
+                    className={styles.removeButton}
+                  >
                     ✕
                   </button>
                 </div>
@@ -151,12 +184,16 @@ export default function CreatePage() {
               <div className={styles.characterCount}>{caption.length}/500</div>
             </div>
 
-            <button type="submit" disabled={!media || !caption.trim() || isUploading} className={styles.submitButton}>
+            <button
+              type="submit"
+              disabled={!media || !caption.trim() || isUploading}
+              className={styles.submitButton}
+            >
               {isUploading ? "Posting..." : "Share Post"}
             </button>
           </form>
         </div>
       </main>
     </div>
-  )
+  );
 }

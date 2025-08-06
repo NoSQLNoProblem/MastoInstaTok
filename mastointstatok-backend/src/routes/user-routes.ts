@@ -77,6 +77,22 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
     }
 })
 
+UserRouter.put('/platform/users/me', async (req, res, next) => {
+    try {
+        console.log(req.user);
+
+        const user = await FindUser(req.user as Profile) as User
+        const { displayName, bio } = req.body;
+        if (!displayName || !bio) throw new ValidationError()
+        user.displayName = displayName;
+        user.bio = bio;
+        res.json(await UpdateUser(user));
+    }
+    catch (e) {
+        next(e)
+    }
+})
+
 UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
     try {
         if (!RegExp("@.+@.+").test(req.params.user)) {
@@ -140,20 +156,19 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
         const ctx = createContext(req);
         const recipient = await LookupUser(req.params.followHandle, req);
         if (!recipient || !recipient.id || !recipient.inboxId) throw new NotFoundError();
+        if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+            throw new ConflictError();
+        }
+        if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
+            throw new ConflictError();
+        }
         if (await isLocalUser(req, req.params.followHandle)) {
-            if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
-                throw new ConflictError();
-            }
-            if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
-                throw new ConflictError();
-            }
-
             //Invalidate cache for users feed
             const keys = await redisClient.keys(`feed:${user.fullHandle}`);
             for (const key of keys) {
                 await redisClient.del(key);
             }
-            res.status(202).json({ "message": "Successfully created the user" });
+            res.status(202).json({ message: "Successfully followed!" });
             next();
         } else {
             await sendFollow(ctx, user.actorId, recipient);
@@ -162,7 +177,7 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
             for (const key of keys) {
                 await redisClient.del(key);
             }
-            res.status(202);
+            res.status(202).json({ message: "Successfully followed!" });
             next();
         }
     } catch (e) {
@@ -202,12 +217,11 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
             next()
         }
 
-        //Invalidate cache for users feed
+        //Invalidate cache for users feed, followers, and following
         const feedKeys = await redisClient.keys(`feed:${user.fullHandle}`);
         for (const key of feedKeys) {
             await redisClient.del(key);
         }
-
 
         const followersKeys = await redisClient.keys(`followers:${user.fullHandle}`);
         for (const key of followersKeys) {
@@ -257,21 +271,18 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         const followers = await getAllUsersFollowersByUserId(user.actorId);
         let externalFollowers: Person[] = []
         for (const follower of followers) {
-            if (!follower?.actorId) continue;
-            if (await isLocalUser(req, getHandleFromUri(follower?.actorId))) {
-                // Do nothing since we will fetch the posts of local followers from the db withut concern of what has
-                // been posted
-                continue;
-            } else {
+            if (!follower?.followerId) continue;
+            if (!isLocalUser(req, getHandleFromUri(follower?.followerId))) {
+                console.log("looking up external user with handle" , getHandleFromUri(follower.followerId))
                 const user = await LookupUser(getHandleFromUri(follower.followerId), req);
+                console.log("We found the evil outsider :(", user);
                 if (!user) continue;
                 externalFollowers.push(user);
             }
         }
         if (externalFollowers.length !== 0) {
-            await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, fileData, mediaURL, mimeType == "mp4" ? "video" : "image");
+            await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, caption, mediaURL, mimeType == "mp4" ? "video" : "image");
         }
-
         res.status(202).json({ message: "Successfully created post" })
         next();
     } catch (e) {
@@ -280,37 +291,37 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
 })
 
 
-UserRouter.get("/platform/users/me/feed", async (req, res, next)=>{
-   const user = await FindUser(req.user as Profile) as User; 
-   const followers = await getAllUsersFollowingByUserId(user.actorId);
-   const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
-   
-   const cacheKey = `feed:${user.fullHandle}:cursor:${cursor}`;
+UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
+    const user = await FindUser(req.user as Profile) as User;
+    const followers = await getAllUsersFollowingByUserId(user.actorId);
+    const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
+
+    const cacheKey = `feed:${user.fullHandle}:cursor:${cursor}`;
     const cachedResponse = await redisClient.get(cacheKey);
 
     if (cachedResponse) {
         console.log("Sending cached response for feed");
     }
 
-  
-   let feed : PostData[] = []
-   const oldestPosts : number[] = []
-   for(const follower of followers){
-        if(!follower?.followerId) continue;
+    let feed: PostData[] = []
+    const oldestPosts: number[] = []
+    for (const follower of followers) {
+        if (!follower?.followerId) continue;
         const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
         feed = feed.concat(posts);
         oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
-   }
+    }
 
-   feed.sort((a, b)=>{
-      return b.timestamp - a.timestamp
-   })
+    feed.sort((a, b) => {
+        return b.timestamp - a.timestamp
+    })
 
-   const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : undefined
-
+    // Getting the new cursor is a fucked up problem that I don't want to think about
+    // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
+    const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : -1
     const response = {
         posts: feed,
-        nextCursor: feed.length > 0 ? newCursor : undefined,
+        nextCursor: (feed.length > 0) ? newCursor : -1,
     };
 
     await redisClient.setEx(cacheKey, 30, JSON.stringify(response));
@@ -338,9 +349,8 @@ UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
             : undefined;
         const response = {
             posts: sortedPosts,
-            nextCursor: sortedPosts.length > 0 ? nextCursor : undefined,
+            nextCursor: sortedPosts.length > 0 ? nextCursor : -1,
         };
-
 
         await redisClient.setEx(cacheKey, 15, JSON.stringify(response));
 

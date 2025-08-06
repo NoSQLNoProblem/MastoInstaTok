@@ -8,9 +8,10 @@ import styles from "./feed.module.css";
 import { apiService } from "@/services/apiService";
 import { usePagination } from "@/hooks/usePagination";
 import { PostData } from "@/types/post";
+import { useAuth } from "@/contexts/AuthContext";
 const PAGE_SIZE = 5;
 
-export async function fetchPostsApi(offset: number) {
+export async function fetchPostsApi(cursor: number) {
    // THIS IS FOR TESTING VIA MOCKS
         //==========================================
         // const response = await fetch(
@@ -22,12 +23,10 @@ export async function fetchPostsApi(offset: number) {
         // const data = await response.json();
         //===========================================
 
+  const endpoint = cursor === 0 ? `/platform/users/me/feed` : `/platform/users/me/feed?cursor=${cursor}`;
+  const data = await apiService.get(endpoint);
 
-        const data = await apiService.get(
-          `/platform/users/me/feed`
-        );
-
-  return { items: data.posts, nextOffset: data.nextOffset };
+  return { items: data.posts, nextOffset: data.nextCursor };
 }
 
 
@@ -41,10 +40,18 @@ export default function FeedPage() {
     fetchNext,
     reset,
   } = usePagination<PostData>(fetchPostsApi);
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     fetchNext();
-  }, [fetchNext]);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -64,7 +71,7 @@ export default function FeedPage() {
   const handleLike = async (postId: string) => {
     try {
       // Uncomment this line when using the real API
-      // await apiService.post(`api//feed/like?postId=${postId}`, {});
+      await apiService.post(`api//feed/like?postId=${postId}`, {});
 
       // Optimistically update the post's like status
       setPosts((prev) =>
@@ -108,6 +115,18 @@ export default function FeedPage() {
           </button>
         </div>
       );
+    }
+
+    if (!loading && posts.length === 0 && offset === -1) {
+      return (
+        <div className={styles.endMessage}>
+          <h2>Welcome to your feed!</h2>
+          <p>It's looking a little empty here. Find some people to follow to see their posts.</p>
+          <button onClick={() => router.push('/search')} className={styles.tryAgainButton}>
+            Find People
+          </button>
+        </div>
+      )
     }
 
     return (

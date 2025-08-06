@@ -3,7 +3,7 @@ import { MongoKvStore } from "./lib/mongo-key-store.js";
 import type { AcceptObject, Attachment, CreateObject, Follower, FollowObject, NoteObject, UndoObject } from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
-import { AddFollower, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
+import { AddFollower, AddFollowing, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
 import { getAcceptRecord, getAttachmentRecord, getCreateRecord, getFollowRecord, getNoteRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
 import { ValidationError } from "./lib/errors.js";
 
@@ -99,7 +99,6 @@ federation
   )
   .setFirstCursor((ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
-
 federation
   .setFollowingDispatcher("/api/users/{identifier}/follows",
     async (ctx, identifier, cursor) => {
@@ -144,12 +143,25 @@ federation
       object: follow,
       to: follow.actorId
     })
-    AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId?.href ?? "")
-  });
+    if (!follower?.inboxId) return;
+    AddFollower(follow.objectId.href, follow.actorId.href, follower?.inboxId.href)
+    AddFollowing(follower?.inboxId.href, follow.objectId.href, follow.actorId.href);
+  }).on(Accept, async (ctx, accept)=>{
+    if(!accept || !accept.id || !accept.objectId || !accept.actorId) return;
+    insertAcceptRecord({
+      id: accept.id,
+      actor: accept.objectId,
+      object: await accept.getObject() as Follow,
+      to : accept.actorId
+    });
+  }).on(Undo, async (ctx, undo)=>{
+    // Todo the undo following here
+    console.log("Received an undo message from an upstream", undo);
+  })
 
 federation.setObjectDispatcher(
   Accept,
-  "/users/{userId}/accept/{acceptId}",
+  "/api/users/{userId}/accept/{acceptId}",
   async (ctx, { userId, acceptId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/accept/${acceptId}`);
     const acceptObject: AcceptObject | null = await getAcceptRecord(id);
@@ -164,7 +176,7 @@ federation.setObjectDispatcher(
 );
 
 federation.setObjectDispatcher(Follow,
-  "/users/{userId}/follows/{followId}",
+  "/api/users/{userId}/follows/{followId}",
   async (ctx, { userId, followId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/follows/${followId}`);
     const followObject: FollowObject | null = await getFollowRecord(id);
@@ -178,7 +190,7 @@ federation.setObjectDispatcher(Follow,
 )
 
 federation.setObjectDispatcher(Undo,
-  "/users/{userId}/undos/{undoId}",
+  "/api/users/{userId}/undos/{undoId}",
   async (ctx, { userId, undoId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/undos/${undoId}`);
     const undoObject: UndoObject | null = await getUndoRecord(id);
@@ -261,7 +273,7 @@ export async function sendUnfollow(
 }
 
 federation.setObjectDispatcher(Create,
-  "/users/{userId}/creates/{createId}",
+  "/api/users/{userId}/creates/{createId}",
   async (ctx, { userId, createId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/creates/${createId}`);
     const createObject: CreateObject | null = await getCreateRecord(id);
@@ -275,7 +287,7 @@ federation.setObjectDispatcher(Create,
 )
 
 federation.setObjectDispatcher(Note,
-  "/users/{userId}/notes/{noteId}",
+  "/api/users/{userId}/notes/{noteId}",
   async (ctx, { userId, noteId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/notes/${noteId}`);
     const noteObject: NoteObject | null = await getNoteRecord(id);
@@ -291,9 +303,8 @@ federation.setObjectDispatcher(Note,
   }
 )
 
-
 federation.setObjectDispatcher(Image,
-  "/users/{userId}/images/{imageId}",
+  "/api/users/{userId}/images/{imageId}",
   async (ctx, { userId, imageId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/images/${imageId}`);
     const attachment: Attachment | null = await getAttachmentRecord(id);
@@ -306,7 +317,7 @@ federation.setObjectDispatcher(Image,
 )
 
 federation.setObjectDispatcher(Video,
-  "/users/{userId}/videos/{videoId}",
+  "/api/users/{userId}/videos/{videoId}",
   async (ctx, { userId, videoId }) => {
     const id = new URL(`${ctx.canonicalOrigin}/users/${userId}/videos/${videoId}`);
     const attachment: Attachment | null = await getAttachmentRecord(id);
@@ -322,7 +333,7 @@ export async function sendNoteToExternalFollowers(
   ctx: Context<unknown>,
   senderId: string,
   recipients: Recipient[],
-  content: string,
+  caption: string,
   attachmentUrl: string,
   attachmentType: "video" | "image"
 ) {
@@ -352,13 +363,13 @@ export async function sendNoteToExternalFollowers(
     attribution: ctx.getActorUri(senderId),
     to: PUBLIC_COLLECTION,
     cc: ctx.getFollowersUri(senderId),
-    content,
+    content : caption,
     attachments: attachments
   })
 
   const create = new Create({
     id: createId,
-    actor: ctx.getActorUri(senderId),
+    actor: ctx.getActorUri(sender.identifier),
     object: note,
   })
 
@@ -370,7 +381,7 @@ export async function sendNoteToExternalFollowers(
 
   insertNoteRecord({
     attachmentUrl: note.attachmentIds[0].href,
-    content: content,
+    content: caption,
     id: noteId.href,
     senderId: senderId
   });
@@ -380,9 +391,10 @@ export async function sendNoteToExternalFollowers(
     id: (create.id as URL).href,
     object: note
   })
-
+  console.log("sending activity");
+  console.log(create)
   await ctx.sendActivity(
-    { identifier: senderId },
+    { identifier: sender.identifier },
     recipients,
     create
   );
