@@ -30,6 +30,7 @@
   display: flex;
   align-items: center;
   gap: 20px;
+  justify-content: center;
 }
 
 .navLink {
@@ -37,6 +38,9 @@
   text-decoration: none;
   padding: 8px 16px;
   border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap : 0.5rem;
   transition: all 0.3s ease;
   font-size: 14px;
 }
@@ -60,6 +64,9 @@
   border-radius: 20px;
   transition: all 0.3s ease;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .logoutButton:hover {

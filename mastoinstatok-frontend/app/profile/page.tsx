@@ -12,6 +12,7 @@ import { apiService } from "@/services/apiService";
 import EditProfileModal from "@/components/EditProfileModal";
 import { User } from "@/types/auth-context";
 import CommentModal from "@/components/CommentModal";
+import { Copy, Heart } from "lucide-react";
 
 async function fetchMyPostsApi(cursor: number) {
   // THIS IS FOR TESTING VIA MOCKS
@@ -138,6 +139,10 @@ export default function ProfilePage() {
     });
   };
 
+  const handleCopy = async () =>{
+    await navigator.clipboard.writeText(profile?.fullHandle ?? "");
+  }
+
   if (isLoading || !isAuthenticated) {
     return (
       <div className={styles.container}>
@@ -195,7 +200,12 @@ export default function ProfilePage() {
               </div>
 
               <div className={styles.bio}>
-                <p className={styles.fullHandle}>{profile?.fullHandle}</p>
+                <div className={styles.handle}>
+                  <p className={styles.fullHandle}>{profile?.fullHandle}</p>
+                  <button className={styles.copyButton} onClick={handleCopy}>
+                    <Copy size={"16"}/>
+                  </button>
+                </div>
                 <p className={styles.bioText}>{profile?.bio}</p>
               </div>
             </div>
@@ -240,7 +250,7 @@ export default function ProfilePage() {
                     <div className={styles.postOverlay}>
                       <div className={styles.postStats}>
                         <span className={styles.postLikes}>
-                          ❤️ {post.likes}
+                          <Heart/> {post.likes}
                         </span>
                       </div>
                     </div>
@@ -297,7 +307,7 @@ export default function ProfilePage() {
                 <p>{selectedPost.caption}</p>
               </div>
               <div className={styles.modalStats}>
-                <span>❤️ {selectedPost.likes} likes</span>
+                <span> <Heart/> {selectedPost.likes} likes</span>
                 <span onClick={() => setIsCommentModalOpen(true)}>💬</span>
               </div>
             </div>

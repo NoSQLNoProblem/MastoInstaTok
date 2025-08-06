@@ -68,27 +68,40 @@ export default function FeedPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [offset, fetchNext]);
 
-  const handleLike = async (postId: string) => {
-    try {
-      // Uncomment this line when using the real API
-      await apiService.post(`api//feed/like?postId=${postId}`, {});
+  const { user } = useAuth();
+  const currentUserId = user?.fullHandle;
 
-      // Optimistically update the post's like status
-      setPosts((prev) =>
-        prev.map((post : PostData) =>
-          post.id === postId
-            ? {
-                ...post,
-                isLiked: !post.isLiked,
-                likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-              }
-            : post
-        )
-      );
-    } catch (error) {
-      console.error("Error liking post:", error);
-    }
-  };
+const handleLike = async (postId: string) => {
+  try {
+    const response = await apiService.post(`/likes/toggle`, { postId });
+    const { action } = response; 
+
+    setPosts((prev) =>
+      prev.map((post: PostData) => {
+        if (post.id === postId) {
+          let newLikedBy: string[] = [...(post.likedBy || [])];
+
+          if (action === "liked") {
+            if (!newLikedBy.includes(currentUserId!)) {
+              newLikedBy.push(currentUserId!);
+            }
+          } else {
+            newLikedBy = newLikedBy.filter((id) => id !== currentUserId);
+          }
+
+          return {
+            ...post,
+            likedBy: newLikedBy, 
+
+          };
+        }
+        return post; 
+      })
+    );
+  } catch (error) {
+    console.error("Error liking post:", error);
+  }
+};
 
   const handleTryAgain = () => {
     reset();

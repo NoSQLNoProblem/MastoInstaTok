@@ -25,6 +25,9 @@
 .searchBox {
   position: relative;
   margin-bottom: 1.875rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .searchInput {
@@ -33,7 +36,7 @@
   border: .0625rem solid #ddd;
   border-radius: 1.5625rem;
   font-size: 1rem;
-  background: white;
+  background: rgb(238, 238, 241);
   box-shadow: 0 .125rem .625rem rgba(0, 0, 0, 0.1);
 }
 
@@ -43,12 +46,10 @@
 }
 
 .searchIcon {
-  position: absolute;
-  right: 1.25rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #999;
   font-size: 1.125rem;
+  border: none;
+  outline: none;
+  background-color:transparent;
 }
 
 .results {

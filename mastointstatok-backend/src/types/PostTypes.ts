@@ -20,7 +20,6 @@ export type PostLikesResponse = {
   postId: string
   likeCount: number
   userHasLiked: boolean
-  likes: LikeDocument[]
 }
 
 export type ToggleLikeResponse = {

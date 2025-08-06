@@ -49,8 +49,7 @@ export type PostData =  {
   mediaType: "image" | "video";
   fileType : FileType;
   caption: string;
-  likes: number;
-  isLiked: boolean;
+  likedBy: string[];
   timestamp: number;
 }
 
