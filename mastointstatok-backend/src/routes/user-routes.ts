@@ -17,15 +17,10 @@ export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
     try {
-        const cacheKey = `userProfile:${req.params.userHandle}`;
-        const cachedResponse = await redisClient.get(cacheKey);
-        if (cachedResponse) {
-            console.log('Sending cached response for user search',JSON.parse(cachedResponse));
-            return res.json(JSON.parse(cachedResponse));
-        }
+        let user;
         let userResponse;
         if (req.params.userHandle === "me") {
-            const user = await FindUser(req.user as Profile)
+            user = await FindUser(req.user as Profile)
             if (user == null) throw new NotFoundError();
 
             userResponse = {
@@ -41,9 +36,15 @@ UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
             if (!RegExp("@.+@.+").test(req.params.userHandle)) {
                 throw new ValidationError()
             }
-            const user = await FindUserByUserHandle(req.params.userHandle, req);
+            user = await FindUserByUserHandle(req.params.userHandle, req);
             if (user == null) throw new NotFoundError();
             userResponse = user;
+        }
+        const cacheKey = `userProfile:${user.fullHandle}`;
+        const cachedResponse = await redisClient.get(cacheKey);
+        if (cachedResponse) {
+            console.log('Sending cached response for user search',JSON.parse(cachedResponse));
+            return res.json(JSON.parse(cachedResponse));
         }
         await redisClient.setEx(cacheKey, 300, JSON.stringify(userResponse));
         res.json(userResponse);
@@ -62,8 +63,7 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
         if (user.displayName != null) throw new ConflictError();
         user.displayName = displayName;
         user.bio = bio;
-        console.log("I am clearing the cache for me and fullhandle!!")
-        await redisClient.del(`userProfile:me`);
+        console.log("I am clearing the cache for fullhandle!!")
         await redisClient.del(`userProfile:${user.fullHandle}`);
 
         res.json(await UpdateUser(user));
@@ -83,8 +83,7 @@ UserRouter.put('/platform/users/me', async (req, res, next) => {
         user.displayName = displayName;
         user.bio = bio;
         // Need to invalidate the cache for me and the user's specific handle. We will get the wrong display name and bio otherwise.
-        console.log("I am clearing the cache for me and fullhandle!!")
-        await redisClient.del(`userProfile:me`);
+        console.log("I am clearing the cache for fullhandle!!")
         await redisClient.del(`userProfile:${user.fullHandle}`);
         res.json(await UpdateUser(user));
     }
