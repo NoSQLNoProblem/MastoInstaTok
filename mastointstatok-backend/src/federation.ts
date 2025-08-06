@@ -99,7 +99,6 @@ federation
   )
   .setFirstCursor((ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
-
 federation
   .setFollowingDispatcher("/api/users/{identifier}/follows",
     async (ctx, identifier, cursor) => {
@@ -157,7 +156,7 @@ federation
     });
   }).on(Undo, async (ctx, undo)=>{
     // Todo the undo following here
-    console.log(undo)
+    console.log("Received an undo message from an upstream", undo);
   })
 
 federation.setObjectDispatcher(
