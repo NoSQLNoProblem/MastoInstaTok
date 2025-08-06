@@ -267,7 +267,6 @@ UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
     }
 });
 
-
 function getOldestPost(posts: PostData[]) {
     if (posts.length == 0) return null;
     let currMin = posts[0];

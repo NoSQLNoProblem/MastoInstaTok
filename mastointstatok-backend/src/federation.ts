@@ -1,11 +1,14 @@
-import { createFederation, exportJwk, generateCryptoKeyPair, importJwk, Follow, Person, Image, Accept, Create, Endpoints, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video, MemoryKvStore } from "@fedify/fedify";
+import { createFederation, exportJwk, generateCryptoKeyPair, importJwk, Follow, Person, Image, Accept, Create, Endpoints, Document, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video, MemoryKvStore } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import type { AcceptObject, Attachment, CreateObject, Follower, FollowObject, NoteObject, UndoObject } from "./types.js";
+import type { AcceptObject, Attachment, CreateObject, FileType, Follower, FollowObject, NoteObject, PostData, UndoObject } from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
 import { AddFollower, AddFollowing, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
 import { getAcceptRecord, getAttachmentRecord, getCreateRecord, getFollowRecord, getNoteRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
 import { ValidationError } from "./lib/errors.js";
+import { getLogger } from "@logtape/logtape";
+import { getHandleFromUri } from "./services/follow-service.js";
+import { Post } from "./database/post-queries.js";
 
 export const federation = createFederation({
   kv: new MemoryKvStore(),
@@ -157,6 +160,77 @@ federation
   }).on(Undo, async (ctx, undo)=>{
     // Todo the undo following here
     console.log("Received an undo message from an upstream", undo);
+  }).on(Create, async (ctx, create)=>{
+    console.log("received a create");
+    console.log(JSON.stringify(create));
+    const object = await create.getObject() 
+    console.log(object);
+    if(!(object instanceof Note)) {
+      getLogger().error("Unsupported document type.");
+      return;
+    }
+    const attachments = object?.getAttachments();
+
+    if(!attachments) {
+      getLogger().error("Posts without any attachments are not supported.");
+      return;
+    }
+
+    if(!create.actorId){
+      getLogger().error("Post without authors are not supported.");
+      return;
+    }
+      
+    for await (const attachment of attachments){
+      if(!(attachment instanceof Image) && !(attachment instanceof Video) && !(attachment instanceof Document)){
+        getLogger().error("Unsupported attachment type.")
+        return;
+      }
+
+      const attachmentUrl = attachment?.url
+      const content = (object.contents && object.contents.length > 0) ?  object.contents[0] : object.content ? object.content : null;
+
+      if(!content){
+        getLogger().error("No content provided");
+        return;
+      }
+
+      if(!attachmentUrl){
+        getLogger().error("No url for attachment provided.");
+        return;
+      }
+
+      let url = attachmentUrl.href;
+      if(url instanceof URL){
+        url = url.href;
+      }
+
+      if(!url){
+        getLogger().error("No url for an attachment provided");
+        return;
+      } 
+
+      const fileType : FileType | null = url?.includes(".png") ? "png" : url.includes(".jpeg") ? "jpeg" : url.includes(".mp4") ? "mp4" : null
+
+      if(!fileType){
+        getLogger().error("Unsupported file type received.");
+        return;
+      }
+    
+      const post : PostData = {
+        id : attachment.id?.href ?? "",
+        caption: content.toString(),
+        fileType : fileType,
+        mediaType : fileType == "mp4" ? "video" : "image",
+        isLiked : false,
+        likes : 0,
+        mediaURL : url,
+        timestamp : Date.now(),
+        userHandle: getHandleFromUri(create.actorId.href)
+      }
+      getLogger().debug("Post data successfully created from remote post. Post: {post}", {post: JSON.stringify(post)});
+      await Post(post);
+    }
   })
 
 federation.setObjectDispatcher(
