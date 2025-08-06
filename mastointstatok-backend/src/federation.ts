@@ -222,8 +222,7 @@ federation
         caption: content.toString(),
         fileType : fileType,
         mediaType : fileType == "mp4" ? "video" : "image",
-        isLiked : false,
-        likes : 0,
+        likedBy: [],
         mediaURL : url,
         timestamp : Date.now(),
         userHandle: getHandleFromUri(create.actorId.href)
