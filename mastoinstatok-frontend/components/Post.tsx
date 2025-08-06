@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import styles from "./Post.module.css"
 import { PostProps } from "@/types/post"
 import CommentModal from "./CommentModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 // 1. Updated interface to match the backend response
 
@@ -11,6 +12,10 @@ export default function Post({ post, onLike }: PostProps) {
   const [mediaLoaded, setMediaLoaded] = useState(false)
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { user } = useAuth();
+  const currentUserId = user?.fullHandle;
+  const isLiked = post.likedBy?.includes(currentUserId!) || false
+  const likeCount = post.likedBy?.length || 0;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -117,8 +122,8 @@ export default function Post({ post, onLike }: PostProps) {
       <div className={styles.actions}>
         <button
           onClick={() => onLike(post.id)}
-          className={`${styles.likeButton} ${post.isLiked ? styles.liked : ""}`}
-          aria-label={post.isLiked ? "Unlike post" : "Like post"}
+          className={`${styles.likeButton} ${isLiked ? styles.liked : ""}`}
+          aria-label={isLiked ? "Unlike post" : "Like post"}
         >
           ❤️
         </button>
@@ -130,7 +135,7 @@ export default function Post({ post, onLike }: PostProps) {
             💬
           </button>
         <span className={styles.likeCount}>
-          {post.likes} {post.likes === 1 ? "like" : "likes"}
+          {likeCount} {likeCount === 1 ? "like" : "likes"}
         </span>
       </div>
 

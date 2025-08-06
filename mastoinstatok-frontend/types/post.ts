@@ -11,8 +11,7 @@ export interface PostData {
   mediaURL: string;
   mediaType: "image" | "video";
   caption: string;
-  likes: number;
-  isLiked: boolean;
+  likedBy: string[];
   timestamp: string;
   avatar?: string;
 }
