@@ -333,7 +333,7 @@ export async function sendNoteToExternalFollowers(
   ctx: Context<unknown>,
   senderId: string,
   recipients: Recipient[],
-  content: string,
+  caption: string,
   attachmentUrl: string,
   attachmentType: "video" | "image"
 ) {
@@ -363,13 +363,13 @@ export async function sendNoteToExternalFollowers(
     attribution: ctx.getActorUri(senderId),
     to: PUBLIC_COLLECTION,
     cc: ctx.getFollowersUri(senderId),
-    content,
+    content : caption,
     attachments: attachments
   })
 
   const create = new Create({
     id: createId,
-    actor: ctx.getActorUri(senderId),
+    actor: ctx.getActorUri(sender.identifier),
     object: note,
   })
 
@@ -381,7 +381,7 @@ export async function sendNoteToExternalFollowers(
 
   insertNoteRecord({
     attachmentUrl: note.attachmentIds[0].href,
-    content: content,
+    content: caption,
     id: noteId.href,
     senderId: senderId
   });
@@ -391,7 +391,8 @@ export async function sendNoteToExternalFollowers(
     id: (create.id as URL).href,
     object: note
   })
-
+  console.log("sending activity");
+  console.log(create)
   await ctx.sendActivity(
     { identifier: sender.identifier },
     recipients,

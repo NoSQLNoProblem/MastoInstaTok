@@ -212,7 +212,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
             }
         }
         if (externalFollowers.length !== 0) {
-            await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, fileData, mediaURL, mimeType == "mp4" ? "video" : "image");
+            await sendNoteToExternalFollowers(createContext(req), user.actorId, externalFollowers, caption, mediaURL, mimeType == "mp4" ? "video" : "image");
         }
         res.status(202).json({ message: "Successfully created post" })
         next();
