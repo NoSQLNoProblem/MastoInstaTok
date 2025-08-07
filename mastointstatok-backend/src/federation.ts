@@ -33,6 +33,7 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
     preferredUsername: user.username,
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
+    outbox: ctx.getOutboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
     endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
     summary: user.bio,
