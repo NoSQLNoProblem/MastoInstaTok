@@ -12,10 +12,6 @@ LikesRouter.post("/likes/toggle", async (req, res) => {
     const { postId } = req.body
     const user = await FindUser(req.user as Profile) as User;
 
-    console.log("=== USER DEBUG ===")
-    console.log("User object:", user)
-    console.log("User.actorId:", user?.fullHandle) 
-
     if (!user || !user.fullHandle) {
       return res.status(401).json({ error: "User not authenticated" })
     }

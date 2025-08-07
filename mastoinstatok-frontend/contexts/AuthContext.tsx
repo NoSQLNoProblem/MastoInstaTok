@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setRegistrationRequired(false);
       }
-      console.log(userData);
       
       setUser(userData);
     } catch (error) {

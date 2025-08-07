@@ -71,8 +71,6 @@ passport.use(
 )
 
 passport.serializeUser((user: any, done) => {
-  console.log("=== SERIALIZE USER DEBUG ===")  //TODO: cleanup on isle whatever this is. 
-  console.log("User object to serialize:", user)
   done(null, user.actorId)
 })
 
