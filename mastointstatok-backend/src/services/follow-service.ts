@@ -1,4 +1,4 @@
-import { Link, Person, type Actor, type OrderedCollection, type OrderedCollectionPage } from "@fedify/fedify";
+import { CollectionPage, Link, Person, type Actor, type OrderedCollection, type OrderedCollectionPage } from "@fedify/fedify";
 import { createContext } from "../federation.js";
 import { type Request } from "express";
 import type { Following, User } from "../types.js";
@@ -93,9 +93,14 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         }
     }
     finally {
+        if (!(collectionPage as {nextId : any}).nextId) return {
+          items,
+          totalItems: collectionPage.totalItems,
+          next: request.url.split("?")[0]
+        }
         return {
             items,
-            next: `${request.url.split("?")[0]}${collectionPage.nextId ? `?next=${collectionPage.nextId}` : ''}`,
+            next: `${request.url.split("?")[0]}${(collectionPage as CollectionPage).nextId ? `?next=${(collectionPage as CollectionPage).nextId}` : ''}`,
             totalItems: collectionPage.totalItems
         }
     }
