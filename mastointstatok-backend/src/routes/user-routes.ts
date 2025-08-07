@@ -228,12 +228,23 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
     const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
     let feed: PostData[] = []
     const oldestPosts: number[] = []
-    for (const follower of followers) {
-        if (!follower?.followerId) continue;
-        const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
-        feed = feed.concat(posts);
-        oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
-    }
+    
+        for (const follower of followers) {
+            if (!follower?.followerId) continue;
+
+            const handle = getHandleFromUri(follower.followeeId);
+            const posts = await getRecentPostsByUserHandle(handle, cursor);
+
+            const isInternalUser = await isLocalUser(req, handle);
+
+            const postsWithInternalFlag = posts.map(post => ({
+                ...post,
+                isInternalUser
+            }));
+
+            feed = feed.concat(postsWithInternalFlag);
+            oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
+        }
 
     feed.sort((a, b) => {
         return b.timestamp - a.timestamp

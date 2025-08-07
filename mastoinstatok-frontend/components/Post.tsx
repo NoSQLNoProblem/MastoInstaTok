@@ -17,6 +17,8 @@ export default function Post({ post, onLike }: PostProps) {
   const isLiked = post.likedBy?.includes(currentUserId!) || false
   const likeCount = post.likedBy?.length || 0;
 
+  const isInternalUser = post.isInternalUser;
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -72,10 +74,10 @@ export default function Post({ post, onLike }: PostProps) {
           src={post.mediaURL}
           className={`${styles.postMedia} ${mediaLoaded ? styles.loaded : ""}`}
           onLoadedData={() => setMediaLoaded(true)}
-          controls 
-          playsInline 
+          controls
+          playsInline
           loop
-          muted 
+          muted
         />
       );
     }
@@ -92,62 +94,64 @@ export default function Post({ post, onLike }: PostProps) {
 
   return (
     <>
-    <article className={styles.post}>
-      <header className={styles.header}>
-        <div className={styles.userInfo}>
-          <div className={styles.avatar}>
-            <img
-              src={post.avatar || `/placeholder-user.jpg`}
-              alt={post.username}
-              className={styles.avatarImage}
-            />
+      <article className={styles.post}>
+        <header className={styles.header}>
+          <div className={styles.userInfo}>
+            <div className={styles.avatar}>
+              <img
+                src={post.avatar || `/placeholder-user.jpg`}
+                alt={post.username}
+                className={styles.avatarImage}
+              />
+            </div>
+            <div className={styles.userDetails}>
+              <h3 className={styles.username}>{post.username}</h3>
+              <h3 className={styles.userHandle}>{post.userHandle}</h3>
+              <span className={styles.timestamp}>{formatTimeAgo(post.timestamp)}</span>
+            </div>
           </div>
-          <div className={styles.userDetails}>
-            <h3 className={styles.username}>{post.username}</h3>
-            <h3 className={styles.userHandle}>{post.userHandle}</h3>
-            <span className={styles.timestamp}>{formatTimeAgo(post.timestamp)}</span>
-          </div>
+        </header>
+
+        <div className={styles.mediaContainer}>
+          {!mediaLoaded && (
+            <div className={styles.mediaPlaceholder}>
+              <div className={styles.spinner}></div>
+            </div>
+          )}
+          {renderMedia()}
         </div>
-      </header>
 
-      <div className={styles.mediaContainer}>
-        {!mediaLoaded && (
-          <div className={styles.mediaPlaceholder}>
-            <div className={styles.spinner}></div>
-          </div>
-        )}
-        {renderMedia()}
-      </div>
-
-      <div className={styles.actions}>
-        <button
-          onClick={() => onLike(post.id)}
-          className={`${styles.likeButton} ${isLiked ? styles.liked : ""}`}
-          aria-label={isLiked ? "Unlike post" : "Like post"}
-        >
-          ❤️
-        </button>
-        <button
+        <div className={styles.actions}>
+          {isInternalUser && (
+            <button
+              onClick={() => onLike(post.id)}
+              className={`${styles.likeButton} ${isLiked ? styles.liked : ""}`}
+              aria-label={isLiked ? "Unlike post" : "Like post"}
+            >
+              ❤️
+            </button>
+          )}
+          <button
             onClick={() => setIsCommentModalOpen(true)}
             className={styles.commentButton}
             aria-label="View comments"
           >
             💬
           </button>
-        <span className={styles.likeCount}>
-          {likeCount} {likeCount === 1 ? "like" : "likes"}
-        </span>
-      </div>
+          <span className={styles.likeCount}>
+            {likeCount} {likeCount === 1 ? "like" : "likes"}
+          </span>
+        </div>
 
-      <div className={styles.caption}>
-        <span className={styles.captionUsername}>{post.username}</span>
-        <span className={styles.captionText}>{post.caption}</span>
-      </div>
-    </article>
-    {isCommentModalOpen && (
-        <CommentModal 
-          postId={post.id} 
-          onClose={() => setIsCommentModalOpen(false)} 
+        <div className={styles.caption}>
+          <span className={styles.captionUsername}>{post.username}</span>
+          <span className={styles.captionText}>{post.caption}</span>
+        </div>
+      </article>
+      {isCommentModalOpen && (
+        <CommentModal
+          postId={post.id}
+          onClose={() => setIsCommentModalOpen(false)}
         />
       )}
     </>
