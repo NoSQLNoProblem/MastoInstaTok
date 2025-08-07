@@ -104,6 +104,11 @@ federation
   .setFirstCursor((ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
 
 federation
+.setOutboxDispatcher("/api/users/{identifier}/outbox", async(ctx, identifer)=>{
+  return null;
+})
+
+federation
   .setFollowingDispatcher("/api/users/{identifier}/follows",
     async (ctx, identifier, cursor) => {
       if (cursor == null) return null;
