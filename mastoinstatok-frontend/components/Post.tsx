@@ -122,7 +122,7 @@ export default function Post({ post, onLike }: PostProps) {
         </div>
 
         <div className={styles.actions}>
-          {isInternalUser && (
+          {(
             <button
               onClick={() => onLike(post.id)}
               className={`${styles.likeButton} ${isLiked ? styles.liked : ""}`}
@@ -132,7 +132,7 @@ export default function Post({ post, onLike }: PostProps) {
             </button>
           )}
 
-          {isInternalUser && (
+          {(
             <span className={styles.likeCount}>
               {likeCount} {likeCount === 1 ? "like" : "likes"}
             </span>
