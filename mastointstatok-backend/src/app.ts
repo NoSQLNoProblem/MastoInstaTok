@@ -41,8 +41,15 @@ const allowedOrigins = ['http://localhost:3000', 'https://bbd-grad-project.co.za
 
 app.set("trust proxy", true);
 
-app.use(integrateFederation(federation, (req) =>  req.user));
-app.use(express.json({ limit: '10mb' }))
+// app.use(integrateFederation(federation, (req) =>  req.user));
+app.use((req, res, next) => {
+  if (req.path === '/api/platform/users/me/posts') {
+    return next();
+  }
+  integrateFederation(federation, (req) => req.user)(req, res, next);
+});
+ 
+app.use(express.json({ limit: '20mb' }))
 
 passport.use(
   new GoogleStrategy(
