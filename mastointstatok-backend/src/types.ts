@@ -51,6 +51,7 @@ export type PostData =  {
   caption: string;
   likedBy: string[];
   timestamp: number;
+  avatar?: string;
 }
 
 export type NoteObject = {

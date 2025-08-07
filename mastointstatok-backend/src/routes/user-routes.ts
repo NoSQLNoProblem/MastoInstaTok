@@ -1,7 +1,7 @@
 import { type Profile } from 'passport';
 import express from 'express';
 import { FindUserByUserHandle, isLocalUser, LookupUser } from '../services/user-service.js';
-import { FindUser, UpdateUser } from '../database/user-queries.js';
+import { FindUser, FindUserByUri, UpdateUser } from '../database/user-queries.js';
 import { getHandleFromUri, GetOrderedCollectionPage } from '../services/follow-service.js';
 import { createContext, sendFollow, sendNoteToExternalFollowers, sendUnfollow } from '../federation.js';
 import { AddFollower, AddFollowing, getAllUsersFollowersByUserId, getAllUsersFollowingByUserId, getInternalUsersFollowersByUserId, isFollowing, RemoveFollower, RemoveFollowing } from '../database/follow-queries.js';
@@ -295,14 +295,15 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
 
             const handle = getHandleFromUri(follower.followeeId);
             const posts = await getRecentPostsByUserHandle(handle, cursor);
-
+            const postUser = posts?.length > 0 ? await FindUserByUserHandle(posts[0].userHandle, req): null;
             const isInternalUser = await isLocalUser(req, handle);
 
             const postsWithInternalFlag = posts.map(post => ({
                 ...post,
-                isInternalUser
+                isInternalUser,
+                avatar: postUser?.avatarURL
             }));
-
+            
             feed = feed.concat(postsWithInternalFlag);
             oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
         }
