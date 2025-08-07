@@ -210,7 +210,15 @@ federation
         return;
       } 
 
-      const fileType : FileType | null = url?.includes(".png") ? "png" : url.includes(".jpeg") ? "jpeg" : url.includes(".mp4") ? "mp4" : null
+      const validFileTypes : string[]= [".png", ".jpeg", ".webp", ".jpg",".m4v",".mp4"];
+      let fileType : FileType | null = null;
+      for (const ext of validFileTypes){
+        if(url?.includes(ext)){
+        fileType = ext.slice(1) as FileType;
+        console.log("This is the file type")
+       }
+      }
+      // const fileType : FileType | null = url?.includes(".png") ? "png" : url.includes(".jpeg") ? "jpeg" : url.includes(".mp4") ? "mp4" : null
 
       if(!fileType){
         getLogger().error("Unsupported file type received.");
@@ -221,7 +229,7 @@ federation
         id : attachment.id?.href ?? "",
         caption: content.toString(),
         fileType : fileType,
-        mediaType : fileType == "mp4" ? "video" : "image",
+        mediaType : (fileType == "mp4" || fileType == "m4v") ? "video" : "image",
         likedBy: [],
         mediaURL : url,
         timestamp : Date.now(),

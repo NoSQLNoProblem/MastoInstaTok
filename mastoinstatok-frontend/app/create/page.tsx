@@ -13,11 +13,12 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function CreatePage() {
   const [media, setMedia] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [fileType, setFileType] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -27,22 +28,24 @@ export default function CreatePage() {
 
   // Maximum file size for uploads
   // will need to adjust for videos
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/x-m4v"];
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        alert("File size must be 10MB or less.");
+        alert("File size must be 20MB or less.");
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      const type = file.type.startsWith("video")
-        ? "video"
-        : file.type.startsWith("image")
-        ? "image"
-        : null;
-      if (!type) return;
-      setMediaType(type);
+      if (!ALLOWED_FILE_TYPES.includes(file.type)){
+        alert("Invalid file type. Please select a JPEG, PNG, GIF, or MP4 file.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      setFileType(file.type);
+      setMediaType(file.type.startsWith("video") ? "video" : "image");
       const reader = new FileReader();
       reader.onload = (e) => {
         setMedia(e.target?.result as string);
@@ -53,46 +56,14 @@ export default function CreatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!media || !caption.trim()) return;
+    if (!media || !caption.trim() || !fileType) return;
 
     setIsUploading(true);
 
     console.log(mediaType);
-
-    try {
-      let fileType = "";
-      if (media) {
-        const match = media.match(
-          /^data:(image\/png|image\/jpeg|video\/mp4);base64,/
-        );
-        if (match) {
-          fileType = match[1];
-        } else if (mediaType === "image") {
-          fileType = "image/png";
-        } else if (mediaType === "video") {
-          fileType = "video/mp4";
-        }
-      }
-      if (
-        !fileType ||
-        !["image/png", "image/jpeg", "video/mp4"].includes(fileType)
-      ) {
-        alert("Only PNG, JPEG, or MP4 files are allowed.");
-        setIsUploading(false);
-        return;
-      }
-
+    try{
       // Remove data URL prefix before sending
-      let base64Data = media;
-      const prefixMatch = media.match(
-        /^data:(image\/png|image\/jpeg|video\/mp4);base64,/
-      );
-      if (prefixMatch) {
-        base64Data = media.replace(
-          /^data:(image\/png|image\/jpeg|video\/mp4);base64,/,
-          ""
-        );
-      }
+      const base64Data = media.split(',')[1];
       await apiService.post("/platform/users/me/posts", {
         caption,
         data: base64Data,
@@ -109,6 +80,7 @@ export default function CreatePage() {
   const removeMedia = () => {
     setMedia(null);
     setMediaType(null);
+    setFileType(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -121,7 +93,6 @@ export default function CreatePage() {
       <main className={styles.main}>
         <div className={styles.createForm}>
           <h1 className={styles.title}>Create New Post</h1>
-
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.imageSection}>
               {!media ? (
@@ -129,7 +100,7 @@ export default function CreatePage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,video/*"
+                    accept={ALLOWED_FILE_TYPES.join(",")}
                     onChange={handleMediaUpload}
                     className={styles.fileInput}
                     id="media-upload"
@@ -138,7 +109,7 @@ export default function CreatePage() {
                     <div className={styles.uploadIcon}>📷🎬</div>
                     <p>Click to upload an image or video</p>
                     <p className={styles.uploadHint}>
-                      JPG, PNG, MP4 up to 10MB
+                      JPG, PNG, MP4 up to 15MB
                     </p>
                   </label>
                 </div>
@@ -146,7 +117,7 @@ export default function CreatePage() {
                 <div className={styles.imagePreview}>
                   {mediaType === "image" ? (
                     <img
-                      src={media || "/placeholder.svg"}
+                      src={media}
                       alt="Preview"
                       className={styles.previewImage}
                     />
