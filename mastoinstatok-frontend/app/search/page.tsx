@@ -137,9 +137,9 @@ export default function SearchPage() {
               <div className={styles.userList}>
                 <UserCard
                     user={{
-                      id: user.actorId,
-                      username: user.fullHandle,
-                      fullName: user.displayName,
+                      actorId: user.actorId,
+                      fullHandle: user.fullHandle,
+                      displayName: user.displayName,
                       bio: user.bio,
                       avatarURL: user.avatarURL,
                       isFollowing: user.isFollowing,
