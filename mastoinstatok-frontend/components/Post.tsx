@@ -5,6 +5,7 @@ import styles from "./Post.module.css"
 import { PostProps } from "@/types/post"
 import CommentModal from "./CommentModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { stripHtmlTags } from "@/app/utils/StripHtml";
 
 // 1. Updated interface to match the backend response
 
@@ -123,33 +124,33 @@ export default function Post({ post, onLike }: PostProps) {
 
         <div className={styles.actions}>
           {isInternalUser && (
-            <button
-              onClick={() => onLike(post.id)}
-              className={`${styles.likeButton} ${isLiked ? styles.liked : ""}`}
-              aria-label={isLiked ? "Unlike post" : "Like post"}
-            >
-              ❤️
-            </button>
-          )}
+            <>
+              <button
+                onClick={() => onLike(post.id)}
+                className={`${styles.likeButton} ${isLiked ? styles.liked : ""}`}
+                aria-label={isLiked ? "Unlike post" : "Like post"}
+              >
+                ❤️
+              </button>
 
-          {isInternalUser && (
-            <span className={styles.likeCount}>
-              {likeCount} {likeCount === 1 ? "like" : "likes"}
-            </span>
-          )}
+              <span className={styles.likeCount}>
+                {likeCount} {likeCount === 1 ? "like" : "likes"}
+              </span>
 
-          <button
-            onClick={() => setIsCommentModalOpen(true)}
-            className={styles.commentButton}
-            aria-label="View comments"
-          >
-            💬
-          </button>
+              <button
+                onClick={() => setIsCommentModalOpen(true)}
+                className={styles.commentButton}
+                aria-label="View comments"
+              >
+                💬
+              </button>
+            </>
+          )}
         </div>
 
         <div className={styles.caption}>
           <span className={styles.captionUsername}>{post.username}</span>
-          <span className={styles.captionText}>{post.caption}</span>
+          <span className={styles.captionText}>{stripHtmlTags(post.caption)}</span>
         </div>
       </article>
       {isCommentModalOpen && (
