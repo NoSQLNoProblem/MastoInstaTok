@@ -440,9 +440,11 @@ export async function sendNoteToExternalFollowers(
   const attachments = attachmentType == "image" ? [new Image({
     id: imageId,
     url: new URL(attachmentUrl),
+    mediaType: attachmentUrl.includes(".png") ? "image/png" : "image/jpeg"
   })] : [new Video({
     id: videoId,
     url: new URL(attachmentUrl),
+    mediaType: "video/mp4"
   })]
 
   const note: Note = new Note({

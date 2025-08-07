@@ -119,7 +119,7 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
         if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
             throw new ConflictError();
         }
-        if (await isLocalUser(req, req.params.followHandle)) {
+        if (isLocalUser(req, req.params.followHandle)) {
             res.status(202).json({ message: "Successfully followed!" });
             next();
         } else {
