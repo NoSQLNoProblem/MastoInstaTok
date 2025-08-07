@@ -18,7 +18,8 @@ export function usePagination<T>(
 
     try {
       const { items: newItems, nextOffset } = await fetchFn(offset);
-      setItems((prev) => (offset === 0 ? newItems : [...prev, ...newItems]));
+      const newItemsState = offset === 0 ? newItems : [...items, ...newItems];
+      setItems((prev) => [...new Set(newItemsState)]);
       setOffset(nextOffset);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred.");
