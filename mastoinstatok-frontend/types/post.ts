@@ -4,7 +4,11 @@ export interface PostProps {
   onLike: (postId: string) => void;
 }
 
-export interface PostData {
+export interface Identifiable {
+  _id: string | number;
+}
+
+export interface PostData extends Identifiable{
   id: string;
   username: string;
   userHandle: string;
