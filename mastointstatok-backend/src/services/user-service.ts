@@ -36,18 +36,14 @@ export async function CreateUser(profile: Profile, baseUrl: string) {
 
 export async function FindUserByUserHandle(userHandle: string, request: Request) {
   const ctx = createContext(request);
-  console.log("Create context successfully");
   const actor = await LookupUser(userHandle, request);
-  console.log("The actor is >>>>>>>>> ", actor)
   const actorId = actor?.id;
   const icon = await actor?.getIcon();
   const summary = actor?.summary
   if (!actorId) return null
-  console.log("Made it here ");
   let avatarUrlString: string | undefined;
   if (icon) {
     const iconUrl = icon instanceof FedifyImage ? icon.url : icon ;
-    console.log(iconUrl);
     if (iconUrl instanceof URL) {
       avatarUrlString = iconUrl.href;
     }
@@ -63,7 +59,6 @@ export async function FindUserByUserHandle(userHandle: string, request: Request)
 }
 
 export async function LookupUser(userHandle: string, request : Request) {
-  console.log("UESR HANDLE", userHandle);
   const ctx = createContext(request);
   if(await isLocalUser(request, userHandle)){
      const actor = await FindUserByUri(ctx.getActorUri(userHandle.split("@")[1]).href);

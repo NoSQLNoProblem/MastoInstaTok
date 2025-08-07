@@ -124,7 +124,7 @@ federation
 federation
   .setInboxListeners("/api/users/{identifier}/inbox", "/api/inbox")
   .on(Follow, async (ctx, follow) => {
-    console.log("Received a follow request")
+    getLogger().debug("Received a follow request")
     if (follow.id == null || follow.actorId == null || follow.objectId == null) {
       return;
     }
@@ -134,8 +134,6 @@ federation
     const follower = await follow.getActor(ctx);
     if (follower == null) return;
     const resourceGUID = crypto.randomUUID().split("-")[0]
-    console.log("the sending identifier for a accept is")
-    console.log(parsed.identifier)
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
@@ -165,12 +163,11 @@ federation
     });
   }).on(Undo, async (ctx, undo)=>{
     // Todo the undo following here
-    console.log("Received an undo message from an upstream", undo);
+    getLogger().debug("Received an undo message from an upstream");
   }).on(Create, async (ctx, create)=>{
-    console.log("received a create");
-    console.log(JSON.stringify(create));
+    getLogger().debug("received a create");
+    getLogger().debug(JSON.stringify(create));
     const object = await create.getObject() 
-    console.log(object);
     if(!(object instanceof Note)) {
       getLogger().error("Unsupported document type.");
       return;
@@ -221,7 +218,6 @@ federation
       for (const ext of validFileTypes){
         if(url?.includes(ext)){
         fileType = ext.slice(1) as FileType;
-        console.log("This is the file type")
        }
       }
       // const fileType : FileType | null = url?.includes(".png") ? "png" : url.includes(".jpeg") ? "jpeg" : url.includes(".mp4") ? "mp4" : null
@@ -292,7 +288,7 @@ federation.setObjectDispatcher(Undo,
 
 export function createContext(request: Request) {
   const url = `${request.protocol}://${request.header('Host') ?? request.hostname}`;
-  console.log("CONEXT URL: " + url);
+  getLogger().debug("CONEXT URL: " + url);
   return federation.createContext(new URL(url), undefined);
 }
 
@@ -480,7 +476,6 @@ export async function sendNoteToExternalFollowers(
     id: (create.id as URL).href,
     object: note
   })
-  console.log(create)
   await ctx.sendActivity(
     { identifier: sender.identifier },
     recipients,
