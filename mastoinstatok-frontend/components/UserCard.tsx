@@ -5,25 +5,25 @@ const placeHolderAvatar = "/placeholder-user.jpg"
 
 interface UserCardProps {
   user: {
-    id: string
-    username: string
-    fullName: string
+    actorId: string
+    displayName: string
+    fullHandle: string
     bio: string
     avatarURL: string | undefined
-    isFollowing: boolean
-    isFollowedBy: boolean
-    followers: number
+    isFollowing?: boolean
+    isFollowedBy?: boolean
+    followers?: number
   }
-  onFollow: (userId: string) => void
-  onUnfollow: (userId: string) => void
+  onFollow: (fullHandle: string) => void
+  onUnfollow: (fullHandle: string) => void
 }
 
 export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) {
   const handleClick = () => {
     if (user.isFollowing) {
-      onUnfollow(user.id)
+      onUnfollow(user.fullHandle)
     } else {
-      onFollow(user.id)
+      onFollow(user.fullHandle)
     }
   }
 
@@ -31,13 +31,15 @@ export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) 
     <div className={styles.userCard}>
       <div className={styles.userInfo}>
         <div className={styles.avatar}>
-          <img src={user?.avatarURL || placeHolderAvatar} alt={user.username} className={styles.avatarImage} />
+          <img src={user?.avatarURL || placeHolderAvatar} alt={user.displayName} className={styles.avatarImage} />
         </div>
         <div className={styles.userDetails}>
-          <h3 className={styles.username}>{user.username}</h3>
-          <p className={styles.fullName}>{user.fullName}</p>
+          <h3 className={styles.username}>{user.displayName}</h3>
+          <p className={styles.fullName}>{user.fullHandle}</p>
           <p className={styles.fullName}>{user.bio}</p>
-          <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
+          {user.followers && (
+            <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
+          )}
           {user.isFollowedBy && (<p className={styles.mutualFollow}>Follows you</p>)}
         </div>
       </div>

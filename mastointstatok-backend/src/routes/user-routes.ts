@@ -155,7 +155,7 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
         const ctx = createContext(req);
         const recipient = await LookupUser(req.params.followHandle, req);
         if (!recipient || !recipient.id || !recipient.inboxId) throw new NotFoundError();
-        if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+        if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.username ?? "").href))) {
             throw new ConflictError();
         }
         if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
@@ -195,7 +195,7 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
 
         const followObject = await getFollowRecordByActors(user.actorId, recipient.id.href);
 
-        if (!(await RemoveFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+        if (!(await RemoveFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user?.username ?? "").href))) {
             throw new ConflictError();
         }
         if (!(await RemoveFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {

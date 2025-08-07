@@ -64,6 +64,7 @@ export default function ProfilePage() {
             apiService.get(`/platform/users/${user.fullHandle}/following`),
             apiService.get(`/platform/users/me/posts/count`),
           ]);
+          
           setFollowersCount(followersRes.totalItems?.toString() || "0");
           setFollowingCount(followingRes.totalItems?.toString() || "0");
           setPostCount(postsRes.count?.toString() || "0");
@@ -189,14 +190,20 @@ export default function ProfilePage() {
                   <span className={styles.statNumber}>{postCount}</span>
                   <span className={styles.statLabel}>posts</span>
                 </div>
-                <div className={styles.stat}>
+                    <button 
+                  className={styles.statButton}
+                  onClick={() => router.push('/followers')}
+                >
                   <span className={styles.statNumber}>{followersCount}</span>
                   <span className={styles.statLabel}>followers</span>
-                </div>
-                <div className={styles.stat}>
+                </button>
+                <button 
+                  className={styles.statButton}
+                  onClick={() => router.push('/following')}
+                >
                   <span className={styles.statNumber}>{followingCount}</span>
                   <span className={styles.statLabel}>following</span>
-                </div>
+                </button>
               </div>
 
               <div className={styles.bio}>

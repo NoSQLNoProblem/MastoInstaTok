@@ -1,4 +1,4 @@
-import { Link, Person, type Actor, type OrderedCollection, type OrderedCollectionPage } from "@fedify/fedify";
+import { CollectionPage, Link, Person, type Actor, type OrderedCollection, type OrderedCollectionPage } from "@fedify/fedify";
 import { createContext } from "../federation.js";
 import { type Request } from "express";
 import type { Following, User } from "../types.js";
@@ -40,7 +40,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
                     actorId: user.id.href,
                     bio: user.summary,
                     displayName: user.name,
-                    fullHandle: `@${user.preferredUsername}@${(new URL(user!.id!.href).host)})` 
+                    fullHandle: `@${user.preferredUsername}@${(new URL(user!.id!.href).host)}` 
                 }
             }
             )),
@@ -51,12 +51,11 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
 
     if (!next) {
         if (!resourceId) return []
-        const resource = await ctx.lookupObject(resourceId);
+        const resource = await ctx.lookupObject(resourceId) as OrderedCollection;
         console.log("The followers endpoint is returning ");
-        getLogger().debug(JSON.stringify(resource));
-        collectionPage = await ((resource) as OrderedCollection).getFirst();
-        if (collectionPage == null) return [];
-
+        console.log(resource)
+        const firstPage = await ((resource) as OrderedCollection).getFirst();
+        collectionPage = firstPage ? firstPage : resource ;
     } else {
         collectionPage = await ctx.lookupObject(next) as OrderedCollectionPage;
     }
@@ -94,9 +93,14 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         }
     }
     finally {
+        if (!(collectionPage as {nextId : any}).nextId) return {
+          items,
+          totalItems: collectionPage.totalItems,
+          next: request.url.split("?")[0]
+        }
         return {
             items,
-            next: `${request.url.split("?")[0]}${collectionPage.nextId ? `?next=${collectionPage.nextId}` : ''}`,
+            next: `${request.url.split("?")[0]}${(collectionPage as CollectionPage).nextId ? `?next=${(collectionPage as CollectionPage).nextId}` : ''}`,
             totalItems: collectionPage.totalItems
         }
     }
