@@ -173,8 +173,9 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
         console.log("getting the request")
         const mimeType = req.body.fileType;
+        const acceptableFiletypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/x-m4v"]
         console.log(mimeType)
-        if (mimeType !== "image/png" && mimeType !== "image/jpeg" && mimeType !== "video/mp4") {
+        if (!acceptableFiletypes.includes(mimeType)) {
             throw new ValidationError();
         }
         const fileData = req.body.data;
@@ -188,7 +189,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
             id: crypto.randomUUID(),
             caption,
             fileType: mimeType,
-            mediaType: mimeType == "video/mp4" ? "video" : "image",
+            mediaType: mimeType.startsWith("video/") ? "video" : "image",
             likedBy: [],
             userHandle: user.fullHandle,
             mediaURL,
