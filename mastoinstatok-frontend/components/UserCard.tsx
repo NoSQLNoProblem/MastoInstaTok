@@ -1,17 +1,22 @@
 "use client"
 
+import { User } from "@/types/auth-context"
 import styles from "./UserCard.module.css"
 
 interface UserCardProps {
   user: {
-    id: string
-    username: string
-    fullName: string
-    avatar: string
-    isFollowing: boolean
-    followers: number
+      actorId: string
+  displayName: string
+  fullHandle: string
+  avatarURL: string | undefined
+  bio: string
+  email?: string
+  followers?: number
+  isFollowing?: boolean
+  isFollowedBy?: boolean
   }
   onFollow: (userId: string) => void
+  onUnfollow?: (userId: string) => void
 }
 
 export default function UserCard({ user, onFollow }: UserCardProps) {
@@ -19,17 +24,16 @@ export default function UserCard({ user, onFollow }: UserCardProps) {
     <div className={styles.userCard}>
       <div className={styles.userInfo}>
         <div className={styles.avatar}>
-          <img src={user.avatar || "/placeholder.svg"} alt={user.username} className={styles.avatarImage} />
+          <img src={user.avatarURL || "/placeholder.svg"} alt={user.displayName} className={styles.avatarImage} />
         </div>
         <div className={styles.userDetails}>
-          <h3 className={styles.username}>{user.username}</h3>
-          <p className={styles.fullName}>{user.fullName}</p>
-          <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
+          <h3 className={styles.username}>{user.displayName}</h3>
+          <p className={styles.fullName}>{user.fullHandle}</p>
         </div>
       </div>
 
       <button
-        onClick={() => onFollow(user.id)}
+        onClick={() => onFollow(user.actorId)}
         className={`${styles.followButton} ${user.isFollowing ? styles.following : ""}`}
       >
         {user.isFollowing ? "Unfollow" : "Follow"}

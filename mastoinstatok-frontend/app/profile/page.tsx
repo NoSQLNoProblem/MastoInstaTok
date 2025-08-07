@@ -64,6 +64,12 @@ export default function ProfilePage() {
             apiService.get(`/platform/users/${user.fullHandle}/following`),
             apiService.get(`/platform/users/me/posts/count`),
           ]);
+          console.log(followersRes);
+          const truncatedNextUrl = followersRes.next.replace(/^http:\/\/localhost:5000\/api/, "");
+          const nextRes = await apiService.get(truncatedNextUrl);
+          console.log(nextRes);
+          
+          
           setFollowersCount(followersRes.totalItems?.toString() || "0");
           setFollowingCount(followingRes.totalItems?.toString() || "0");
           setPostCount(postsRes.count?.toString() || "0");

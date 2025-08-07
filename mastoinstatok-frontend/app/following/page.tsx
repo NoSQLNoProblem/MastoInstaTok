@@ -1,97 +1,100 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import Navigation from "@/components/Navigation"
-import UserCard from "@/components/UserCard"
-import styles from "./following.module.css"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Navigation from "@/components/Navigation";
+import UserCard from "@/components/UserCard";
+import styles from "./following.module.css";
+import { useAuth } from "@/contexts/AuthContext";
+import React from "react";
+import { apiService } from "@/services/apiService";
+import { User } from "@/types/auth-context";
 
-interface User {
-  id: string
-  username: string
-  fullName: string
-  avatar: string
-  isFollowing: boolean
-  followers: number
+interface FollowingResponse {
+  items: User[];
+  nextPage: string | null;
+  totalItems: number;
 }
-
 export default function FollowingPage() {
-  const [following, setFollowing] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const router = useRouter()
+  const [following, setFollowing] = useState<User[]>([]);
+  const [latestFollowResponse, setLatestFollowResponse] = useState<FollowingResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  useEffect(() => {
-    // const authToken = document.cookie.includes("auth-token=authenticated")
-    // if (!authToken) {
-    //   router.push("/auth")
-    //   return
-    // }
-
-    // Generate mock following data
-    const generateMockFollowing = (): User[] => {
-      const mockFollowing: User[] = []
-      const followingData = [
-        { username: "best_friend_jane", fullName: "Jane Smith" },
-        { username: "college_buddy_mike", fullName: "Mike Johnson" },
-        { username: "sister_emma", fullName: "Emma Wilson" },
-        { username: "photo_master_alex", fullName: "Alex Chen" },
-        { username: "landscape_lover", fullName: "Sarah Davis" },
-        { username: "portrait_pro", fullName: "David Kim" },
-        { username: "world_wanderer", fullName: "Lisa Garcia" },
-        { username: "backpack_adventures", fullName: "Tom Rodriguez" },
-        { username: "city_explorer", fullName: "Anna Martinez" },
-        { username: "gym_motivation", fullName: "Chris Brown" },
-        { username: "yoga_master", fullName: "Maya Patel" },
-        { username: "running_coach", fullName: "Ryan Lee" },
-        { username: "digital_artist", fullName: "Sophie Turner" },
-        { username: "street_art_fan", fullName: "Mark Wilson" },
-        { username: "abstract_creator", fullName: "Nina Anderson" },
-        { username: "indie_musician", fullName: "Paul Thompson" },
-        { username: "jazz_lover", fullName: "Zoe Clark" },
-        { username: "guitar_hero", fullName: "Luke Miller" }
-      ]
-
-      followingData.forEach((user, index) => {
-        mockFollowing.push({
-          id: `following-${index + 1}`,
-          username: user.username,
-          fullName: user.fullName,
-          avatar: `/placeholder.svg?height=60&width=60&query=user avatar ${user.username}`,
-          isFollowing: true, // All are being followed
-          followers: Math.floor(Math.random() * 5000) + 500,
-        })
-      })
-
-      return mockFollowing.sort((a, b) => a.username.localeCompare(b.username))
+  async function fetchFollowing() {
+    if(latestFollowResponse && latestFollowResponse.items.length <= 0) {
+      return; // No more items to fetch
     }
-
-    // Simulate loading delay
-    setTimeout(() => {
-      setFollowing(generateMockFollowing())
-      setLoading(false)
-    }, 800)
-  }, [router])
-
-  const handleFollow = (userId: string) => {
-    setFollowing(prev =>
-      prev.map(user =>
-        user.id === userId
-          ? {
-              ...user,
-              isFollowing: !user.isFollowing,
-              followers: user.isFollowing ? user.followers - 1 : user.followers + 1,
-            }
-          : user
-      )
-    )
+    setLoading(true);
+    try {
+      if (latestFollowResponse?.nextPage) {
+        const response = await apiService.get(latestFollowResponse.nextPage);
+        setFollowing((prev) => [...prev, ...response.items]);
+        setLatestFollowResponse({
+          ...latestFollowResponse,
+          nextPage: response.nextPage,
+        });
+      } else {
+        const response = await apiService.get(`/platform/users/${user?.fullHandle}/following`);
+        setFollowing(response.items);
+        setLatestFollowResponse({
+          items: response.items,
+          nextPage: response.nextPage,
+          totalItems: response.totalItems,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching following:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const filteredFollowing = following.filter(user => {
-    const matchesSearch = user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesSearch
-  })
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !user) {
+      router.push("/auth");
+    }
+
+    fetchFollowing();
+  }, []);
+
+    useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop >=
+          document.documentElement.offsetHeight - 1000
+      ) {
+        fetchFollowing();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [latestFollowResponse, fetchFollowing]);
+
+  const handleFollow = (userId: string) => {
+    // setFollowing((prev) =>
+    //   prev.map((user) =>
+    //     user.id === userId
+    //       ? {
+    //           ...user,
+    //           isFollowing: !user.isFollowing,
+    //           followers: user.isFollowing
+    //             ? user.followers - 1
+    //             : user.followers + 1,
+    //         }
+    //       : user
+    //   )
+    // );
+  };
+
+  const filteredFollowing = following.filter((user) => {
+    const matchesSearch =
+      user?.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -104,7 +107,7 @@ export default function FollowingPage() {
           </div>
         </main>
       </div>
-    )
+    );
   }
 
   return (
@@ -144,8 +147,8 @@ export default function FollowingPage() {
                     <div className={styles.emptyIcon}>👥</div>
                     <h3>Not following anyone yet</h3>
                     <p>When you follow people, they'll appear here.</p>
-                    <button 
-                      onClick={() => router.push("/search")} 
+                    <button
+                      onClick={() => router.push("/search")}
                       className={styles.findPeopleButton}
                     >
                       Find people to follow
@@ -155,14 +158,27 @@ export default function FollowingPage() {
               </div>
             ) : (
               <div className={styles.userList}>
-                {filteredFollowing.map((user) => (
-                  <UserCard key={user.id} user={user} onFollow={handleFollow} />
-                ))}
+                {filteredFollowing.map((user) => {
+                  return (
+                    <UserCard
+                      key={user.actorId}
+                      user={{
+                        actorId: user.actorId,
+                        fullHandle: user.fullHandle || "",
+                        displayName: user.displayName,
+                        bio: user.bio || "",
+                        avatarURL: user.avatarURL,
+                        isFollowing: true,
+                      }}
+                      onFollow={() => handleFollow(user.actorId)}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
       </main>
     </div>
-  )
+  );
 }

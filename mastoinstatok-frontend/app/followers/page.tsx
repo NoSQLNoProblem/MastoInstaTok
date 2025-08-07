@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import Navigation from "@/components/Navigation"
 import UserCard from "@/components/UserCard"
 import styles from "./followers.module.css"
+import { useAuth } from "@/contexts/AuthContext"
+import React from "react"
 
 interface User {
   id: string
@@ -20,14 +22,13 @@ export default function FollowersPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
+      const { isAuthenticated, isLoading } = useAuth();
+
 
   useEffect(() => {
-    // const authToken = document.cookie.includes("auth-token=authenticated")
-    // if (!authToken) {
-    //   router.push("/auth")
-    //   return
-    // }
-
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth");
+    }
     // Generate mock followers data
     const generateMockFollowers = (): User[] => {
       const mockFollowers: User[] = []
