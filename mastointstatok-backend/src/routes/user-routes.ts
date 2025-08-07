@@ -275,6 +275,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
 UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
     const user = await FindUser(req.user as Profile) as User;
     const isFirstPage = !req.query.cursor;
+    console.log("Is this the first page?",isFirstPage,"\n=====================");
     const cacheKey = `feed:${user.fullHandle}`;
     
     if (isFirstPage) {
@@ -315,9 +316,9 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
         posts: feed,
         nextCursor: (feed.length > 0) ? newCursor : -1,
     };
-
-    await redisClient.setEx(cacheKey, 30, JSON.stringify(response));
-
+    if (isFirstPage){
+        await redisClient.setEx(cacheKey, 10, JSON.stringify(response));
+    }
     res.json(response)
 })
 
