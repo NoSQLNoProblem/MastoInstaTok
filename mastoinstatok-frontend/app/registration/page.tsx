@@ -16,7 +16,7 @@ export default function RegistrationPage() {
   const router = useRouter();
   const { refreshUser, logout } = useAuth();
 
-  const displayNameRegex = /^(?=.{1,30}$)[a-zA-Z](?:[a-zA-Z0-9_]*[a-zA-Z0-9])?$/;
+  const displayNameRegex = /^(?=.*\S).{6,30}$/;
 
   const validateDisplayNameAndBiography = (name: string, biography: string) => {
     if (!displayNameRegex.test(name)) {
@@ -134,13 +134,11 @@ export default function RegistrationPage() {
           <h2 className={styles.rulesTitle}>Rules for display names:</h2>
           <ul className={styles.rulesList}>
             <li className={styles.ruleText}>
-              Must be between 1 and 30 characters long.
+              Must be between 6 and 30 characters long.
             </li>
             <li className={styles.ruleText}>
-              Can only contain letters, numbers, and underscores.
+              Must contain at least 1 non-space character.
             </li>
-            <li className={styles.ruleText}>Must start with a letter.</li>
-            <li className={styles.ruleText}>Cannot end with an underscore.</li>
           </ul>
         </div>
       </div>
