@@ -26,7 +26,7 @@ export default function FollowersPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   async function fetchFollowers() {
-    if (latestFollowerResponse && latestFollowerResponse.items.length <= 0) {
+    if( latestFollowerResponse && !latestFollowerResponse.nextPage) {
       return; // No more items to fetch
     }
     setLoading(true);

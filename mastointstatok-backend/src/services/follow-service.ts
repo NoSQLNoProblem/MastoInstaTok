@@ -31,7 +31,6 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
         }
 
         const baseUri = getBaseUri(request);
-        console.log("BASE URL: " + baseUri);
         return {
             items : await Promise.all(collection.users.map(async (actor) => {
                 const user = await LookupUser(getHandleFromUri(isFollowing ? (actor as Following).followeeId : actor.followerId), request);
@@ -52,8 +51,6 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
     if (!next) {
         if (!resourceId) return []
         const resource = await ctx.lookupObject(resourceId) as OrderedCollection;
-        console.log("The followers endpoint is returning ");
-        console.log(resource)
         const firstPage = await ((resource) as OrderedCollection).getFirst();
         collectionPage = firstPage ? firstPage : resource ;
     } else {

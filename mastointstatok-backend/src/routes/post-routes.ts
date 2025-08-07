@@ -3,6 +3,7 @@ import { getPostById } from '../database/post-queries.js';
 
 export const PostRouter = express.Router();
 import redisClient from '../lib/redis.js';
+import { getLogger } from '@logtape/logtape';
 
 PostRouter.get(("/platform/posts/:postId"), async (req, res, next)=>{
 
@@ -10,7 +11,7 @@ PostRouter.get(("/platform/posts/:postId"), async (req, res, next)=>{
     const cachedResponse = await redisClient.get(cacheKey);
 
     if (cachedResponse) {
-        console.log('Sending cached response for posts');
+        getLogger().debug('Sending cached response for posts');
         return res.json(JSON.parse(cachedResponse));
     }
 
