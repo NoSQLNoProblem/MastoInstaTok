@@ -80,7 +80,6 @@ UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
         if (!RegExp("@.+@.+").test(req.params.user)) {
             throw new ValidationError();
         }
-        console.log("Made it out alive")
         const user = await LookupUser(req.params.user, req)
         if (!user || !user.followersId) throw new NotFoundError();
         res.json(await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []);
@@ -250,8 +249,6 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
         return b.timestamp - a.timestamp
     })
 
-    // Getting the new cursor is a fucked up problem that I don't want to think about
-    // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
     const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : -1
     res.json({
         posts: feed,
