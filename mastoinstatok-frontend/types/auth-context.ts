@@ -4,8 +4,11 @@ export type User = {
     displayName: string,
     actorId: string,
     bio ?: string,
-    fullHandle ?: string,
-    avatarURL ?: string
+    fullHandle : string,
+    avatarURL ?: string,
+     isFollowing?: boolean
+    isFollowedBy?: boolean
+    followers?: number
   };
 
 export interface AuthContextType {

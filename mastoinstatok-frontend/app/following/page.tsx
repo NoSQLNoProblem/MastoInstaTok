@@ -17,27 +17,36 @@ interface FollowingResponse {
 }
 export default function FollowingPage() {
   const [following, setFollowing] = useState<User[]>([]);
-  const [latestFollowResponse, setLatestFollowResponse] = useState<FollowingResponse | null>(null);
+  const [latestFollowResponse, setLatestFollowResponse] =
+    useState<FollowingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   async function fetchFollowing() {
-    if(latestFollowResponse && latestFollowResponse.items.length <= 0) {
+    if (latestFollowResponse && latestFollowResponse.items.length <= 0) {
       return; // No more items to fetch
     }
     setLoading(true);
     try {
       if (latestFollowResponse?.nextPage) {
         const response = await apiService.get(latestFollowResponse.nextPage);
+        response.items.forEach((item: User) => {
+          item.isFollowing = true; // Ensure all fetched users are marked as following
+        });
         setFollowing((prev) => [...prev, ...response.items]);
         setLatestFollowResponse({
           ...latestFollowResponse,
           nextPage: response.nextPage,
         });
       } else {
-        const response = await apiService.get(`/platform/users/${user?.fullHandle}/following`);
+        const response = await apiService.get(
+          `/platform/users/${user?.fullHandle}/following`
+        );
+        response.items.forEach((item: User) => {
+          item.isFollowing = true; // Ensure all fetched users are marked as following
+        });
         setFollowing(response.items);
         setLatestFollowResponse({
           items: response.items,
@@ -51,20 +60,21 @@ export default function FollowingPage() {
       setLoading(false);
     }
   }
-
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !user) {
+    if (!authLoading && !isAuthenticated && !user && !loading) {
       router.push("/auth");
     }
 
-    fetchFollowing();
-  }, []);
-
-    useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      fetchFollowing();
+    }
+  }, [authLoading, isAuthenticated, user]);
+  
+  useEffect(() => {
     const handleScroll = () => {
       if (
         window.innerHeight + document.documentElement.scrollTop >=
-          document.documentElement.offsetHeight - 1000
+        document.documentElement.offsetHeight - 1000
       ) {
         fetchFollowing();
       }
@@ -74,25 +84,38 @@ export default function FollowingPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [latestFollowResponse, fetchFollowing]);
 
-  const handleFollow = (userId: string) => {
-    // setFollowing((prev) =>
-    //   prev.map((user) =>
-    //     user.id === userId
-    //       ? {
-    //           ...user,
-    //           isFollowing: !user.isFollowing,
-    //           followers: user.isFollowing
-    //             ? user.followers - 1
-    //             : user.followers + 1,
-    //         }
-    //       : user
-    //   )
-    // );
+  const handleUnfollow = async (fullHandle: string) => {
+    if (!user) return;
+    try {
+      await apiService.delete(`/platform/users/me/follows/${fullHandle}`);
+      setFollowing((prev) =>
+        prev.map((u) =>
+          u.fullHandle === fullHandle ? { ...u, isFollowing: false } : u
+        )
+      );
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const handleFollow = async (fullHandle: string) => {
+    if (!user) return;
+    try {
+      await apiService.post(`/platform/users/me/follows/${fullHandle}`);
+      setFollowing((prev) =>
+        prev.map((u) =>
+          u.fullHandle === fullHandle ? { ...u, isFollowing: true } : u
+        )
+      );
+    } catch (err: any) {
+      console.error(err);
+    }
   };
 
   const filteredFollowing = following.filter((user) => {
-    const matchesSearch =
-      user?.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = user?.displayName
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
@@ -168,9 +191,10 @@ export default function FollowingPage() {
                         displayName: user.displayName,
                         bio: user.bio || "",
                         avatarURL: user.avatarURL,
-                        isFollowing: true,
+                        isFollowing: user.isFollowing,
                       }}
-                      onFollow={() => handleFollow(user.actorId)}
+                      onUnfollow={() => handleUnfollow(user.fullHandle)}
+                      onFollow={() => handleFollow(user.fullHandle)}
                     />
                   );
                 })}

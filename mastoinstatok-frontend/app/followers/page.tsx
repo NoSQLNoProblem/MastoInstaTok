@@ -1,88 +1,129 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import Navigation from "@/components/Navigation"
-import UserCard from "@/components/UserCard"
-import styles from "./followers.module.css"
-import { useAuth } from "@/contexts/AuthContext"
-import React from "react"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Navigation from "@/components/Navigation";
+import UserCard from "@/components/UserCard";
+import styles from "./followers.module.css";
+import { useAuth } from "@/contexts/AuthContext";
+import React from "react";
+import { User } from "@/types/auth-context";
+import { apiService } from "@/services/apiService";
 
-interface User {
-  id: string
-  username: string
-  fullName: string
-  avatar: string
-  isFollowing: boolean
-  followers: number
+interface FollowerResponse {
+  items: User[];
+  nextPage: string | null;
+  totalItems: number;
 }
 
 export default function FollowersPage() {
-  const [followers, setFollowers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const router = useRouter()
-      const { isAuthenticated, isLoading } = useAuth();
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [latestFollowerResponse, setLatestFollowerResponse] =
+    useState<FollowerResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/auth");
+  async function fetchFollowers() {
+    if (latestFollowerResponse && latestFollowerResponse.items.length <= 0) {
+      return; // No more items to fetch
     }
-    // Generate mock followers data
-    const generateMockFollowers = (): User[] => {
-      const mockFollowers: User[] = []
-      const followerNames = [
-        "alex_photo", "sarah_travels", "mike_fitness", "emma_art", "john_music",
-        "lisa_food", "david_tech", "anna_fashion", "chris_nature", "maya_design",
-        "tom_sports", "julia_books", "ryan_gaming", "sophie_dance", "mark_cooking",
-        "nina_yoga", "paul_movies", "zoe_pets", "luke_cars", "ivy_plants",
-        "sam_coffee", "ruby_vintage", "max_adventure", "chloe_beauty", "noah_science"
-      ]
-
-      for (let i = 0; i < followerNames.length; i++) {
-        const username = followerNames[i]
-
-        mockFollowers.push({
-          id: `follower-${i + 1}`,
-          username: username,
-          fullName: username.split('_').map(word => 
-            word.charAt(0).toUpperCase() + word.slice(1)
-          ).join(' '),
-          avatar: `/placeholder.svg?height=60&width=60&query=user avatar ${username}`,
-          isFollowing: Math.random() > 0.3, // 70% chance of following back
-          followers: Math.floor(Math.random() * 2000) + 100,
-        })
+    setLoading(true);
+    try {
+      if (latestFollowerResponse?.nextPage) {
+        const response = await apiService.get(latestFollowerResponse.nextPage);
+        await Promise.all(response.items.map(async (item: User) => {
+          item.isFollowedBy = true; // Ensure all fetched users are marked as following
+          const followStatus = await apiService.get(`/platform/users/me/follows/${item.fullHandle}`);
+          item.isFollowing = followStatus?.userFollowing?.follows;
+        }));
+        setFollowers((prev) => [...prev, ...response.items]);
+        setLatestFollowerResponse({
+          ...latestFollowerResponse,
+          nextPage: response.nextPage,
+        });
+      } else {
+        const response = await apiService.get(
+          `/platform/users/${user?.fullHandle}/followers`
+        );
+        await Promise.all(response.items.map(async (item: User) => {
+          item.isFollowedBy = true; // Ensure all fetched users are marked as following
+          const followStatus = await apiService.get(`/platform/users/me/follows/${item.fullHandle}`);
+          item.isFollowing = followStatus?.userFollowing?.follows;
+        }));
+        setFollowers(response.items);
+        setLatestFollowerResponse({
+          items: response.items,
+          nextPage: response.nextPage,
+          totalItems: response.totalItems,
+        });
       }
-
-      return mockFollowers.sort((a, b) => a.username.localeCompare(b.username))
+    } catch (error) {
+      console.error("Error fetching following:", error);
+    } finally {
+      setLoading(false);
     }
-
-    // Simulate loading delay
-    setTimeout(() => {
-      setFollowers(generateMockFollowers())
-      setLoading(false)
-    }, 800)
-  }, [router])
-
-  const handleFollow = (userId: string) => {
-    setFollowers(prev =>
-      prev.map(user =>
-        user.id === userId
-          ? {
-              ...user,
-              isFollowing: !user.isFollowing,
-              followers: user.isFollowing ? user.followers - 1 : user.followers + 1,
-            }
-          : user
-      )
-    )
   }
 
-  const filteredFollowers = followers.filter(user =>
-    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && !user && !loading) {
+      router.push("/auth");
+    }
+
+    if(!authLoading && isAuthenticated && user) {
+      fetchFollowers();
+    }
+  }, [authLoading, isAuthenticated, user]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.offsetHeight - 1000
+      ) {
+        fetchFollowers();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [latestFollowerResponse, fetchFollowers]);
+
+  const handleUnfollow = async (fullHandle: string) => {
+    if (!user) return;
+    try {
+      await apiService.delete(`/platform/users/me/follows/${fullHandle}`);
+      setFollowers((prev) =>
+        prev.map((u) =>
+          u.fullHandle === fullHandle ? { ...u, isFollowing: false } : u
+        )
+      );
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const handleFollow = async (fullHandle: string) => {
+    if (!user) return;
+    try {
+      await apiService.post(`/platform/users/me/follows/${fullHandle}`);
+      setFollowers((prev) =>
+        prev.map((u) =>
+          u.fullHandle === fullHandle ? { ...u, isFollowing: true } : u
+        )
+      );
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const filteredFollowers = followers.filter((user) => {
+    const matchesSearch = user?.displayName
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -95,7 +136,7 @@ export default function FollowersPage() {
           </div>
         </main>
       </div>
-    )
+    );
   }
 
   return (
@@ -140,14 +181,29 @@ export default function FollowersPage() {
               </div>
             ) : (
               <div className={styles.userList}>
-                {filteredFollowers.map((user) => (
-                  <UserCard key={user.id} user={user} onFollow={handleFollow} />
-                ))}
+                {filteredFollowers.map((user) => {
+                  return(
+                    <UserCard
+                      key={user.actorId}
+                      user={{
+                        actorId: user.actorId,
+                        fullHandle: user.fullHandle || "",
+                        displayName: user.displayName,
+                        bio: user.bio || "",
+                        avatarURL: user.avatarURL,
+                        isFollowedBy: user.isFollowedBy,
+                        isFollowing: user.isFollowing,
+                      }}
+                      onUnfollow={() => handleUnfollow(user.fullHandle)}
+                      onFollow={() => handleFollow(user.fullHandle)}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
       </main>
     </div>
-  )
+  );
 }
