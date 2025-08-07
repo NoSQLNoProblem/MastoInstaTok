@@ -346,7 +346,9 @@ UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
             nextCursor: sortedPosts.length > 0 ? nextCursor : -1,
         };
 
-        await redisClient.setEx(cacheKey, 15, JSON.stringify(response));
+        if(isFirstPage) {
+            await redisClient.setEx(cacheKey, 15, JSON.stringify(response));
+        }
 
         res.json(response);
     } catch (e) {
