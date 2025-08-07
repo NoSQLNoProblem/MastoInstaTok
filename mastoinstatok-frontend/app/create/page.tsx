@@ -60,7 +60,6 @@ export default function CreatePage() {
 
     setIsUploading(true);
 
-    console.log(mediaType);
     try{
       // Remove data URL prefix before sending
       const base64Data = media.split(',')[1];

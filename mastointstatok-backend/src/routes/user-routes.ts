@@ -13,6 +13,7 @@ import { uploadToS3 } from '../lib/s3.js';
 import { countPostsByUserHandle, getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
 import crypto from 'crypto'
 import redisClient from '../lib/redis.js';
+import { getLogger } from '@logtape/logtape';
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
@@ -43,7 +44,7 @@ UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
         const cacheKey = `userProfile:${user.fullHandle}`;
         const cachedResponse = await redisClient.get(cacheKey);
         if (cachedResponse) {
-            console.log('Sending cached response for user search',JSON.parse(cachedResponse));
+            getLogger().debug('Sending cached response for user search',JSON.parse(cachedResponse));
             return res.json(JSON.parse(cachedResponse));
         }
         await redisClient.setEx(cacheKey, 20, JSON.stringify(userResponse));
@@ -63,7 +64,6 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
         if (user.displayName != null) throw new ConflictError();
         user.displayName = displayName;
         user.bio = bio;
-        console.log("I am clearing the cache for fullhandle!!")
         await redisClient.del(`userProfile:${user.fullHandle}`);
 
         res.json(await UpdateUser(user));
@@ -76,14 +76,12 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
 
 UserRouter.put('/platform/users/me', async (req, res, next) => {
     try {
-        console.log(req.user);
         const user = await FindUser(req.user as Profile) as User
         const { displayName, bio } = req.body;
         if (!displayName || !bio) throw new ValidationError()
         user.displayName = displayName;
         user.bio = bio;
         // Need to invalidate the cache for me and the user's specific handle. We will get the wrong display name and bio otherwise.
-        console.log("I am clearing the cache for fullhandle!!")
         await redisClient.del(`userProfile:${user.fullHandle}`);
         res.json(await UpdateUser(user));
     }
@@ -97,12 +95,11 @@ UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
         if (!RegExp("@.+@.+").test(req.params.user)) {
             throw new ValidationError();
         }
-        console.log("Made it out alive")
 
         const cacheKey = `followers:${req.params.user}`;
         const cachedResponse = await redisClient.get(cacheKey);
         if (cachedResponse) {
-            console.log('Sending cached response for get followers',JSON.parse(cachedResponse));
+            getLogger().debug('Sending cached response for get followers',JSON.parse(cachedResponse));
             return res.json(JSON.parse(cachedResponse));
         }
 
@@ -128,7 +125,7 @@ UserRouter.get('/platform/users/:user/following', async (req, res, next) => {
         const cachedResponse = await redisClient.get(cacheKey);
 
         if (cachedResponse) {
-            console.log('Sending cached response for get following',JSON.parse(cachedResponse));
+            getLogger().debug('Sending cached response for get following',JSON.parse(cachedResponse));
             return res.json(JSON.parse(cachedResponse));
         }
 
@@ -161,7 +158,6 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
         if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
             throw new ConflictError();
         }
-        console.log('Clearing cache on follow!!!');
         await Promise.all([
             redisClient.del(`following:${user.fullHandle}`),
             redisClient.del(`followers:${req.params.followHandle}`),
@@ -203,7 +199,6 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
         }
 
         // Invalidate relevant caches precisely and safely
-        console.log('Clearing cache on unfollow!!!');
         await Promise.all([
             redisClient.del(`following:${user.fullHandle}`),
             redisClient.del(`followers:${req.params.followHandle}`),
@@ -227,19 +222,15 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
 
 UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
-        console.log("getting the request")
         const mimeType = req.body.fileType;
         const acceptableFiletypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/x-m4v"]
-        console.log(mimeType)
         if (!acceptableFiletypes.includes(mimeType)) {
             throw new ValidationError();
         }
         const fileData = req.body.data;
         const caption = req.body.caption;
         const user = await FindUser(req.user as Profile) as User; // This assertion is valid because we have passed the authentication middleware
-        console.log("Found the user at least");
         const mediaURL = await uploadToS3(fileData, mimeType, `bbd-grad-project-mastoinstatok-bucket`, crypto.randomUUID())
-        console.log("media url is", mediaURL)
         // Create the Post Object
         const post: PostData = {
             id: crypto.randomUUID(),
@@ -253,7 +244,6 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         }
         // save the post data to the db
         await Post(post)
-        console.log('Clearing cache on post!!!');
         await Promise.all([
             redisClient.del(`postCount:${user.fullHandle}`),
             redisClient.del(`myPosts:${user.fullHandle}`), 
@@ -266,9 +256,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         for (const follower of followers) {
             if (!follower?.followerId) continue;
             if (!isLocalUser(req, getHandleFromUri(follower?.followerId))) {
-                console.log("looking up external user with handle", getHandleFromUri(follower.followerId))
                 const user = await LookupUser(getHandleFromUri(follower.followerId), req);
-                console.log("We found the evil outsider :(", user);
                 if (!user) continue;
                 externalFollowers.push(user);
             }
@@ -292,7 +280,6 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
     if (isFirstPage) {
         const cachedResponse = await redisClient.get(cacheKey);
             if (cachedResponse) {
-                console.log('Sending cached response for get feed!!!',JSON.parse(cachedResponse));
                 return res.json(JSON.parse(cachedResponse));
             }
     }
@@ -343,7 +330,6 @@ UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
         if (isFirstPage){
             const cachedResponse = await redisClient.get(cacheKey);
         if (cachedResponse) {
-            console.log("Sending cached posts for", user.fullHandle, JSON.parse(cachedResponse));
             return res.json(JSON.parse(cachedResponse));
         }
         }
@@ -421,7 +407,6 @@ UserRouter.get('/platform/users/me/posts/count', async (req, res, next) => {
         const cachedResponse = await redisClient.get(cacheKey);
 
         if (cachedResponse) {
-            console.log("Sendiong cached response for post count", JSON.parse(cachedResponse))
             return res.json(JSON.parse(cachedResponse));
         }
 
