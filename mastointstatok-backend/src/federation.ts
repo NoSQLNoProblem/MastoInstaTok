@@ -33,6 +33,7 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
     preferredUsername: user.username,
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
+    outbox: ctx.getOutboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
     endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
     summary: user.bio,
@@ -101,6 +102,11 @@ federation
     }
   )
   .setFirstCursor((ctx, identifier) => Number.MAX_SAFE_INTEGER.toString());
+
+federation
+.setOutboxDispatcher("/api/users/{identifier}/outbox", async(ctx, identifer)=>{
+  return null;
+})
 
 federation
   .setFollowingDispatcher("/api/users/{identifier}/follows",
@@ -188,8 +194,8 @@ federation
       }
 
       const attachmentUrl = attachment?.url
-      const content = (object.contents && object.contents.length > 0) ?  object.contents[0] : object.content ? object.content : null;
-
+      let content = (object.contents && object.contents.length > 0) ?  object.contents[0] : object.content ? object.content : null;
+      content = content?.toString().replace(/<[^>]+>/g, '') ?? "";
       if(!content){
         getLogger().error("No content provided");
         return;
@@ -210,7 +216,15 @@ federation
         return;
       } 
 
-      const fileType : FileType | null = url?.includes(".png") ? "png" : url.includes(".jpeg") ? "jpeg" : url.includes(".mp4") ? "mp4" : null
+      const validFileTypes : string[]= [".png", ".jpeg", ".webp", ".jpg",".m4v",".mp4"];
+      let fileType : FileType | null = null;
+      for (const ext of validFileTypes){
+        if(url?.includes(ext)){
+        fileType = ext.slice(1) as FileType;
+        console.log("This is the file type")
+       }
+      }
+      // const fileType : FileType | null = url?.includes(".png") ? "png" : url.includes(".jpeg") ? "jpeg" : url.includes(".mp4") ? "mp4" : null
 
       if(!fileType){
         getLogger().error("Unsupported file type received.");
@@ -221,7 +235,7 @@ federation
         id : attachment.id?.href ?? "",
         caption: content.toString(),
         fileType : fileType,
-        mediaType : fileType == "mp4" ? "video" : "image",
+        mediaType : (fileType == "mp4" || fileType == "m4v") ? "video" : "image",
         likedBy: [],
         mediaURL : url,
         timestamp : Date.now(),
@@ -426,16 +440,18 @@ export async function sendNoteToExternalFollowers(
   const attachments = attachmentType == "image" ? [new Image({
     id: imageId,
     url: new URL(attachmentUrl),
+    mediaType: attachmentUrl.includes(".png") ? "image/png" : "image/jpeg"
   })] : [new Video({
     id: videoId,
     url: new URL(attachmentUrl),
+    mediaType: "video/mp4"
   })]
 
   const note: Note = new Note({
     id: noteId,
-    attribution: ctx.getActorUri(senderId),
+    attribution: ctx.getActorUri(sender.identifier),
     to: PUBLIC_COLLECTION,
-    cc: ctx.getFollowersUri(senderId),
+    cc: ctx.getFollowersUri(sender.identifier),
     content : caption,
     attachments: attachments
   })
@@ -464,7 +480,6 @@ export async function sendNoteToExternalFollowers(
     id: (create.id as URL).href,
     object: note
   })
-  console.log("sending activity");
   console.log(create)
   await ctx.sendActivity(
     { identifier: sender.identifier },

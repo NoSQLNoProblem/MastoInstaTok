@@ -71,4 +71,4 @@ export type CreateObject = {
   object: Note
 }
 
-export type FileType =  "png" | "jpeg" | "mp4"
+export type FileType =  "png" | "jpeg" | "mp4" | "jpg" | "m4v" | "webp"

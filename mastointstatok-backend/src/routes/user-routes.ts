@@ -80,7 +80,6 @@ UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
         if (!RegExp("@.+@.+").test(req.params.user)) {
             throw new ValidationError();
         }
-        console.log("Made it out alive")
         const user = await LookupUser(req.params.user, req)
         if (!user || !user.followersId) throw new NotFoundError();
         res.json(await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []);
@@ -114,13 +113,13 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
         const ctx = createContext(req);
         const recipient = await LookupUser(req.params.followHandle, req);
         if (!recipient || !recipient.id || !recipient.inboxId) throw new NotFoundError();
-        if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+        if (!(await AddFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.username ?? "").href))) {
             throw new ConflictError();
         }
         if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
             throw new ConflictError();
         }
-        if (await isLocalUser(req, req.params.followHandle)) {
+        if (isLocalUser(req, req.params.followHandle)) {
             res.status(202).json({ message: "Successfully followed!" });
             next();
         } else {
@@ -146,14 +145,14 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
 
         const followObject = await getFollowRecordByActors(user.actorId, recipient.id.href);
 
-        if (!(await RemoveFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user.actorId).href))) {
+        if (!(await RemoveFollower(recipient.id.href, user.actorId, ctx.getInboxUri(user?.username ?? "").href))) {
             throw new ConflictError();
         }
         if (!(await RemoveFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
             throw new ConflictError();
         }
 
-        if (await isLocalUser(req, req.params.followHandle)) {
+        if (isLocalUser(req, req.params.followHandle)) {
             res.status(204).json({ "message": "Successfully deleted the user" });
             next()
         }
@@ -173,8 +172,9 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
         console.log("getting the request")
         const mimeType = req.body.fileType;
+        const acceptableFiletypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/x-m4v"]
         console.log(mimeType)
-        if (mimeType !== "image/png" && mimeType !== "image/jpeg" && mimeType !== "video/mp4") {
+        if (!acceptableFiletypes.includes(mimeType)) {
             throw new ValidationError();
         }
         const fileData = req.body.data;
@@ -188,7 +188,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
             id: crypto.randomUUID(),
             caption,
             fileType: mimeType,
-            mediaType: mimeType == "video/mp4" ? "video" : "image",
+            mediaType: mimeType.startsWith("video/") ? "video" : "image",
             likedBy: [],
             userHandle: user.fullHandle,
             mediaURL,
@@ -227,19 +227,28 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
     const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
     let feed: PostData[] = []
     const oldestPosts: number[] = []
-    for (const follower of followers) {
-        if (!follower?.followerId) continue;
-        const posts = await getRecentPostsByUserHandle(getHandleFromUri(follower.followeeId), cursor);
-        feed = feed.concat(posts);
-        oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
-    }
+    
+        for (const follower of followers) {
+            if (!follower?.followerId) continue;
+
+            const handle = getHandleFromUri(follower.followeeId);
+            const posts = await getRecentPostsByUserHandle(handle, cursor);
+
+            const isInternalUser = await isLocalUser(req, handle);
+
+            const postsWithInternalFlag = posts.map(post => ({
+                ...post,
+                isInternalUser
+            }));
+
+            feed = feed.concat(postsWithInternalFlag);
+            oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
+        }
 
     feed.sort((a, b) => {
         return b.timestamp - a.timestamp
     })
 
-    // Getting the new cursor is a fucked up problem that I don't want to think about
-    // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
     const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : -1
     res.json({
         posts: feed,
