@@ -188,8 +188,8 @@ federation
       }
 
       const attachmentUrl = attachment?.url
-      const content = (object.contents && object.contents.length > 0) ?  object.contents[0] : object.content ? object.content : null;
-
+      let content = (object.contents && object.contents.length > 0) ?  object.contents[0] : object.content ? object.content : null;
+      content = content?.toString().replace(/<[^>]+>/g, '') ?? "";
       if(!content){
         getLogger().error("No content provided");
         return;
