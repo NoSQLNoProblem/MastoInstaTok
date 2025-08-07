@@ -447,9 +447,9 @@ export async function sendNoteToExternalFollowers(
 
   const note: Note = new Note({
     id: noteId,
-    attribution: ctx.getActorUri(senderId),
+    attribution: ctx.getActorUri(sender.identifier),
     to: PUBLIC_COLLECTION,
-    cc: ctx.getFollowersUri(senderId),
+    cc: ctx.getFollowersUri(sender.identifier),
     content : caption,
     attachments: attachments
   })
@@ -478,7 +478,6 @@ export async function sendNoteToExternalFollowers(
     id: (create.id as URL).href,
     object: note
   })
-  console.log("sending activity");
   console.log(create)
   await ctx.sendActivity(
     { identifier: sender.identifier },

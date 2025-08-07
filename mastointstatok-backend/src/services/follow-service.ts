@@ -51,12 +51,11 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
 
     if (!next) {
         if (!resourceId) return []
-        const resource = await ctx.lookupObject(resourceId);
+        const resource = await ctx.lookupObject(resourceId) as OrderedCollection;
         console.log("The followers endpoint is returning ");
         console.log(resource)
-        collectionPage = await ((resource) as OrderedCollection).getFirst();
-        if (collectionPage == null) return [];
-
+        const firstPage = await ((resource) as OrderedCollection).getFirst();
+        collectionPage = firstPage ? firstPage : resource ;
     } else {
         collectionPage = await ctx.lookupObject(next) as OrderedCollectionPage;
     }
