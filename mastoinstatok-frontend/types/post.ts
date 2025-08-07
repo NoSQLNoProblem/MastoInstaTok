@@ -14,4 +14,5 @@ export interface PostData {
   likedBy: string[];
   timestamp: string;
   avatar?: string;
+  isInternalUser: boolean;
 }

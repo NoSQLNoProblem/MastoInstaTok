@@ -229,8 +229,9 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
         console.log("getting the request")
         const mimeType = req.body.fileType;
+        const acceptableFiletypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/x-m4v"]
         console.log(mimeType)
-        if (mimeType !== "image/png" && mimeType !== "image/jpeg" && mimeType !== "video/mp4") {
+        if (!acceptableFiletypes.includes(mimeType)) {
             throw new ValidationError();
         }
         const fileData = req.body.data;
@@ -244,8 +245,8 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
             id: crypto.randomUUID(),
             caption,
             fileType: mimeType,
+            mediaType: mimeType.startsWith("video/") ? "video" : "image",
             likedBy: [],
-            mediaType: mimeType == "video/mp4" ? "video" : "image",
             userHandle: user.fullHandle,
             mediaURL,
             timestamp: Date.now(),
@@ -300,12 +301,23 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
 
     let feed: PostData[] = []
     const oldestPosts: number[] = []
-    for (const followee of followees) {
-        if (!followee.followerId) continue;
-        const posts = await getRecentPostsByUserHandle(getHandleFromUri(followee.followeeId), cursor);
-        feed = feed.concat(posts);
-        oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
-    }
+    
+        for (const follower of followees) {
+            if (!follower?.followerId) continue;
+
+            const handle = getHandleFromUri(follower.followeeId);
+            const posts = await getRecentPostsByUserHandle(handle, cursor);
+
+            const isInternalUser = await isLocalUser(req, handle);
+
+            const postsWithInternalFlag = posts.map(post => ({
+                ...post,
+                isInternalUser
+            }));
+
+            feed = feed.concat(postsWithInternalFlag);
+            oldestPosts.push(getOldestPost(posts)?.timestamp ?? Number.MIN_SAFE_INTEGER);
+        }
 
     feed.sort((a, b) => {
         return b.timestamp - a.timestamp
