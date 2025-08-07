@@ -1,6 +1,7 @@
 "use client"
 
 import styles from "./UserCard.module.css"
+import { stripHtmlTags } from "@/app/utils/StripHtml"
 const placeHolderAvatar = "/placeholder-user.jpg"
 
 interface UserCardProps {
@@ -36,7 +37,7 @@ export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) 
         <div className={styles.userDetails}>
           <h3 className={styles.username}>{user.displayName}</h3>
           <p className={styles.fullName}>{user.fullHandle}</p>
-          <p className={styles.fullName}>{user.bio}</p>
+          <p className={styles.fullName}>{stripHtmlTags(user.bio)}</p>
           {user.followers && (
             <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
           )}
