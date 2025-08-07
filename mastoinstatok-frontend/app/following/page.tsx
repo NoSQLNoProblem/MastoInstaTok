@@ -25,7 +25,7 @@ export default function FollowingPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   async function fetchFollowing() {
-    if (latestFollowResponse && latestFollowResponse.items.length <= 0) {
+    if (latestFollowResponse && !latestFollowResponse.nextPage) {
       return; // No more items to fetch
     }
     setLoading(true);
@@ -69,7 +69,7 @@ export default function FollowingPage() {
       fetchFollowing();
     }
   }, [authLoading, isAuthenticated, user]);
-  
+
   useEffect(() => {
     const handleScroll = () => {
       if (
