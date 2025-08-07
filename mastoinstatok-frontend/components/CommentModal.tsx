@@ -126,11 +126,6 @@ export default function CommentModal({ postId, onClose }: CommentModalProps) {
             !error &&
             comments.map((comment) => (
               <div key={comment._id} className={styles.commentItem}>
-                <img
-                  src={comment.avatarURL || "/placeholder-user.jpg"}
-                  alt={comment.displayName}
-                  className={styles.commentAvatar}
-                />
                 <p>
                   <span className={styles.commentDisplayName}>
                     {comment.displayName}

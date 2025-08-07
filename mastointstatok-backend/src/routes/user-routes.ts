@@ -12,30 +12,42 @@ import { getFollowRecordByActors } from '../database/object-queries.js';
 import { uploadToS3 } from '../lib/s3.js';
 import { countPostsByUserHandle, getRecentPostsByUserHandle, Post } from '../database/post-queries.js';
 import crypto from 'crypto'
+import redisClient from '../lib/redis.js';
 export const UserRouter = express.Router();
 
 UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
     try {
+        let user;
+        let userResponse;
         if (req.params.userHandle === "me") {
-            const user = await FindUser(req.user as Profile)
+            user = await FindUser(req.user as Profile)
             if (user == null) throw new NotFoundError();
-            return res.json({
+
+            userResponse = {
                 actorId: user.actorId,
                 bio: user.bio,
                 displayName: user.displayName,
                 fullHandle: user.fullHandle,
                 email: user.email,
                 avatarURL: user.avatarURL
-            });
+            };
         }
-
-        if (!RegExp("@.+@.+").test(req.params.userHandle)) {
-            throw new ValidationError()
+        else {
+            if (!RegExp("@.+@.+").test(req.params.userHandle)) {
+                throw new ValidationError()
+            }
+            user = await FindUserByUserHandle(req.params.userHandle, req);
+            if (user == null) throw new NotFoundError();
+            userResponse = user;
         }
-
-        const user = await FindUserByUserHandle(req.params.userHandle, req);
-        if (user == null) throw new NotFoundError();
-        res.json(user);
+        const cacheKey = `userProfile:${user.fullHandle}`;
+        const cachedResponse = await redisClient.get(cacheKey);
+        if (cachedResponse) {
+            console.log('Sending cached response for user search',JSON.parse(cachedResponse));
+            return res.json(JSON.parse(cachedResponse));
+        }
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(userResponse));
+        res.json(userResponse);
         next();
 
     } catch (e) {
@@ -51,6 +63,9 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
         if (user.displayName != null) throw new ConflictError();
         user.displayName = displayName;
         user.bio = bio;
+        console.log("I am clearing the cache for fullhandle!!")
+        await redisClient.del(`userProfile:${user.fullHandle}`);
+
         res.json(await UpdateUser(user));
         next()
     }
@@ -62,12 +77,14 @@ UserRouter.post('/platform/users/me', async (req, res, next) => {
 UserRouter.put('/platform/users/me', async (req, res, next) => {
     try {
         console.log(req.user);
-
         const user = await FindUser(req.user as Profile) as User
         const { displayName, bio } = req.body;
         if (!displayName || !bio) throw new ValidationError()
         user.displayName = displayName;
         user.bio = bio;
+        // Need to invalidate the cache for me and the user's specific handle. We will get the wrong display name and bio otherwise.
+        console.log("I am clearing the cache for fullhandle!!")
+        await redisClient.del(`userProfile:${user.fullHandle}`);
         res.json(await UpdateUser(user));
     }
     catch (e) {
@@ -80,11 +97,22 @@ UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
         if (!RegExp("@.+@.+").test(req.params.user)) {
             throw new ValidationError();
         }
+        console.log("Made it out alive")
+
+        const cacheKey = `followers:${req.params.user}`;
+        const cachedResponse = await redisClient.get(cacheKey);
+        if (cachedResponse) {
+            console.log('Sending cached response for get followers',JSON.parse(cachedResponse));
+            return res.json(JSON.parse(cachedResponse));
+        }
+
         const user = await LookupUser(req.params.user, req)
         if (!user || !user.followersId) throw new NotFoundError();
-        res.json(await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []);
-        next();
 
+        const followers = await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(followers));
+        res.json(followers);
+        next();
     } catch (e) {
         next(e);
     }
@@ -95,9 +123,23 @@ UserRouter.get('/platform/users/:user/following', async (req, res, next) => {
         if (!RegExp("@.+@.+").test(req.params.user)) {
             throw new ValidationError();
         }
+
+        const cacheKey = `following:${req.params.user}`
+        const cachedResponse = await redisClient.get(cacheKey);
+
+        if (cachedResponse) {
+            console.log('Sending cached response for get following',JSON.parse(cachedResponse));
+            return res.json(JSON.parse(cachedResponse));
+        }
+
         const user = await LookupUser(req.params.user, req)
         if (!user || !user.followingId) throw new NotFoundError();
-        res.json(await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined, true) ?? []);
+
+        const following = await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined, true) ?? []
+
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(following));
+
+        res.json(following);
     } catch (e) {
         next(e)
     }
@@ -119,18 +161,26 @@ UserRouter.post('/platform/users/me/follows/:followHandle', async (req, res, nex
         if (!(await AddFollowing(user.actorId, recipient.id.href, recipient.inboxId.href))) {
             throw new ConflictError();
         }
-        if (isLocalUser(req, req.params.followHandle)) {
-            res.status(202).json({ message: "Successfully followed!" });
-            next();
+        console.log('Clearing cache on follow!!!');
+        await Promise.all([
+            redisClient.del(`following:${user.fullHandle}`),
+            redisClient.del(`followers:${req.params.followHandle}`),
+            redisClient.del(`feed:${user.fullHandle}`)
+        ]);
+
+        if (await isLocalUser(req, req.params.followHandle)) {
+            // No federated action needed for local follows
         } else {
             await sendFollow(ctx, user.actorId, recipient);
-            res.status(202).json({ message: "Successfully followed!" });
-            next();
         }
+        
+        res.status(202).json({ message: "Successfully followed!" });
+        next();
+
     } catch (e) {
         next(e)
     }
-})
+});
 
 UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, next) => {
     try {
@@ -152,21 +202,28 @@ UserRouter.delete('/platform/users/me/follows/:followHandle', async (req, res, n
             throw new ConflictError();
         }
 
-        if (isLocalUser(req, req.params.followHandle)) {
-            res.status(204).json({ "message": "Successfully deleted the user" });
-            next()
-        }
-        else {
-            // Get the follower object corresponding to the sender and recipient
+        // Invalidate relevant caches precisely and safely
+        console.log('Clearing cache on unfollow!!!');
+        await Promise.all([
+            redisClient.del(`following:${user.fullHandle}`),
+            redisClient.del(`followers:${req.params.followHandle}`),
+            redisClient.del(`feed:${user.fullHandle}`) // Invalidate the single feed key
+        ]);
+
+        if (await isLocalUser(req, req.params.followHandle)) {
+            // No federated action needed
+        } else {
             if (!followObject) throw new NotFoundError();
             await sendUnfollow(ctx, user.actorId, recipient, followObject);
-            res.status(204).json({ "message": "Successfully deleted the user" });
-            next()
         }
+        
+        res.status(204).json({ "message": "Successfully unfollowed the user" });
+        next()
+
     } catch (e) {
         next(e);
     }
-})
+});
 
 UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
     try {
@@ -196,6 +253,12 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         }
         // save the post data to the db
         await Post(post)
+        console.log('Clearing cache on post!!!');
+        await Promise.all([
+            redisClient.del(`postCount:${user.fullHandle}`),
+            redisClient.del(`myPosts:${user.fullHandle}`), 
+            redisClient.del(`feed:${user.fullHandle}`)
+        ]);
 
         // get the internal and the external followers
         const followers = await getAllUsersFollowersByUserId(user.actorId);
@@ -203,7 +266,7 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
         for (const follower of followers) {
             if (!follower?.followerId) continue;
             if (!isLocalUser(req, getHandleFromUri(follower?.followerId))) {
-                console.log("looking up external user with handle" , getHandleFromUri(follower.followerId))
+                console.log("looking up external user with handle", getHandleFromUri(follower.followerId))
                 const user = await LookupUser(getHandleFromUri(follower.followerId), req);
                 console.log("We found the evil outsider :(", user);
                 if (!user) continue;
@@ -223,12 +286,23 @@ UserRouter.post("/platform/users/me/posts", async (req, res, next) => {
 
 UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
     const user = await FindUser(req.user as Profile) as User;
-    const followers = await getAllUsersFollowingByUserId(user.actorId);
+    const isFirstPage = !req.query.cursor;
+    const cacheKey = `feed:${user.fullHandle}`;
+    
+    if (isFirstPage) {
+        const cachedResponse = await redisClient.get(cacheKey);
+            if (cachedResponse) {
+                console.log('Sending cached response for get feed!!!',JSON.parse(cachedResponse));
+                return res.json(JSON.parse(cachedResponse));
+            }
+    }
+    const followees = await getAllUsersFollowingByUserId(user.actorId);
     const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string)
+
     let feed: PostData[] = []
     const oldestPosts: number[] = []
     
-        for (const follower of followers) {
+        for (const follower of followees) {
             if (!follower?.followerId) continue;
 
             const handle = getHandleFromUri(follower.followeeId);
@@ -250,26 +324,44 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
     })
 
     const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : -1
-    res.json({
+    const response = {
         posts: feed,
-        nextCursor: (feed.length > 0) ? newCursor : -1
-    })
+        nextCursor: (feed.length > 0) ? newCursor : -1,
+    };
+
+    await redisClient.setEx(cacheKey, 30, JSON.stringify(response));
+
+    res.json(response)
 })
 
 UserRouter.get("/platform/users/me/posts", async (req, res, next) => {
-    console.log("here");
     try {
         const user = await FindUser(req.user as Profile) as User;
+        const isFirstPage = !req.query.cursor;
+        const cacheKey = `myPosts:${user.fullHandle}`;
+        
+        if (isFirstPage){
+            const cachedResponse = await redisClient.get(cacheKey);
+        if (cachedResponse) {
+            console.log("Sending cached posts for", user.fullHandle, JSON.parse(cachedResponse));
+            return res.json(JSON.parse(cachedResponse));
+        }
+        }
+        
         const cursor = !req.query.cursor ? Number.MAX_SAFE_INTEGER : parseInt(req.query.cursor as string);
         const posts = await getRecentPostsByUserHandle(user.fullHandle, cursor);
         const sortedPosts = posts.slice().sort((a, b) => b.timestamp - a.timestamp);
         const nextCursor = sortedPosts.length > 0
             ? sortedPosts[sortedPosts.length - 1].timestamp
             : undefined;
-        res.json({
+        const response = {
             posts: sortedPosts,
-            nextCursor: (sortedPosts.length > 0) ? nextCursor : -1
-        });
+            nextCursor: sortedPosts.length > 0 ? nextCursor : -1,
+        };
+
+        await redisClient.setEx(cacheKey, 15, JSON.stringify(response));
+
+        res.json(response);
     } catch (e) {
         next(e);
     }
@@ -325,8 +417,18 @@ UserRouter.get('/platform/users/me/posts/count', async (req, res, next) => {
     try {
         const user = await FindUser(req.user as Profile);
         if (!user) throw new NotFoundError("Current user not found.");
+        const cacheKey = `postCount:${user.fullHandle}`
+        const cachedResponse = await redisClient.get(cacheKey);
+
+        if (cachedResponse) {
+            console.log("Sendiong cached response for post count", JSON.parse(cachedResponse))
+            return res.json(JSON.parse(cachedResponse));
+        }
+
         const postCount = await countPostsByUserHandle(user.fullHandle);
-        return res.json({ count: postCount });
+        const response = { count: postCount }
+        await redisClient.setEx(cacheKey, 10, JSON.stringify(response));
+        return res.json(response);
     } catch (e) {
         next(e);
     }
