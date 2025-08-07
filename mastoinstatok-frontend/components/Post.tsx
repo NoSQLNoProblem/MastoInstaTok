@@ -131,6 +131,13 @@ export default function Post({ post, onLike }: PostProps) {
               ❤️
             </button>
           )}
+
+          {isInternalUser && (
+            <span className={styles.likeCount}>
+              {likeCount} {likeCount === 1 ? "like" : "likes"}
+            </span>
+          )}
+
           <button
             onClick={() => setIsCommentModalOpen(true)}
             className={styles.commentButton}
@@ -138,11 +145,6 @@ export default function Post({ post, onLike }: PostProps) {
           >
             💬
           </button>
-          {isInternalUser && (
-            <span className={styles.likeCount}>
-              {likeCount} {likeCount === 1 ? "like" : "likes"}
-            </span>
-          )}
         </div>
 
         <div className={styles.caption}>
