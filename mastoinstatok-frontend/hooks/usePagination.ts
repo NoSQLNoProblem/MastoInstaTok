@@ -1,6 +1,7 @@
+import { Identifiable } from "@/types/post";
 import { useState, useRef, useCallback } from "react";
 
-export function usePagination<T>(
+export function usePagination<T extends Identifiable>(
   fetchFn: (offset: number) => Promise<{ items: T[]; nextOffset: number }>,
   initialOffset = 0
 ) {
@@ -19,7 +20,8 @@ export function usePagination<T>(
     try {
       const { items: newItems, nextOffset } = await fetchFn(offset);
       const newItemsState = offset === 0 ? newItems : [...items, ...newItems];
-      setItems((prev) => [...new Set(newItemsState)]);
+      const uniqueById = [...new Map(newItemsState.map(obj => [obj._id, obj])).values()];
+      setItems(uniqueById);
       setOffset(nextOffset);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred.");
