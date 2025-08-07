@@ -514,6 +514,7 @@ export async function sendNoteToExternalFollowers(
 export async function NotifyAuthorLikes(post : PostData, req: Request, user: User){
 
   const recipient = await LookupUser(post.userHandle, req);
+  console.log("the recipient", recipient);
   const ctx = createContext(req)
   if(!recipient){
     getLogger().error("No recipient found")
@@ -528,11 +529,13 @@ export async function NotifyAuthorLikes(post : PostData, req: Request, user: Use
     getLogger().error("No username on user object");
     throw new ValidationError();
   }
+  console.log("making like");
   const like = new Like({
     actor: ctx.getActorUri(user.actorId),
     object: new URL(post.id),
     to: recipient
   })
+  console.log("sending activity");
   ctx.sendActivity({identifier: user.username}, recipient, like);
 }
 
