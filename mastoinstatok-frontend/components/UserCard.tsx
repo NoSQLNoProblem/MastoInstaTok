@@ -1,49 +1,35 @@
 "use client"
 
 import styles from "./UserCard.module.css"
-const placeHolderAvatar = "/placeholder-user.jpg"
 
 interface UserCardProps {
   user: {
     id: string
     username: string
     fullName: string
-    bio: string
-    avatarURL: string | undefined
+    avatar: string
     isFollowing: boolean
-    isFollowedBy: boolean
     followers: number
   }
   onFollow: (userId: string) => void
-  onUnfollow: (userId: string) => void
 }
 
-export default function UserCard({ user, onFollow, onUnfollow }: UserCardProps) {
-  const handleClick = () => {
-    if (user.isFollowing) {
-      onUnfollow(user.id)
-    } else {
-      onFollow(user.id)
-    }
-  }
-
+export default function UserCard({ user, onFollow }: UserCardProps) {
   return (
     <div className={styles.userCard}>
       <div className={styles.userInfo}>
         <div className={styles.avatar}>
-          <img src={user?.avatarURL || placeHolderAvatar} alt={user.username} className={styles.avatarImage} />
+          <img src={user.avatar || "/placeholder.svg"} alt={user.username} className={styles.avatarImage} />
         </div>
         <div className={styles.userDetails}>
           <h3 className={styles.username}>{user.username}</h3>
           <p className={styles.fullName}>{user.fullName}</p>
-          <p className={styles.fullName}>{user.bio}</p>
           <p className={styles.followers}>{user.followers.toLocaleString()} followers</p>
-          {user.isFollowedBy && (<p className={styles.mutualFollow}>Follows you</p>)}
         </div>
       </div>
 
       <button
-        onClick={handleClick}
+        onClick={() => onFollow(user.id)}
         className={`${styles.followButton} ${user.isFollowing ? styles.following : ""}`}
       >
         {user.isFollowing ? "Unfollow" : "Follow"}

@@ -189,14 +189,20 @@ export default function ProfilePage() {
                   <span className={styles.statNumber}>{postCount}</span>
                   <span className={styles.statLabel}>posts</span>
                 </div>
-                <div className={styles.stat}>
+                    <button 
+                  className={styles.statButton}
+                  onClick={() => router.push('/followers')}
+                >
                   <span className={styles.statNumber}>{followersCount}</span>
                   <span className={styles.statLabel}>followers</span>
-                </div>
-                <div className={styles.stat}>
+                </button>
+                <button 
+                  className={styles.statButton}
+                  onClick={() => router.push('/following')}
+                >
                   <span className={styles.statNumber}>{followingCount}</span>
                   <span className={styles.statLabel}>following</span>
-                </div>
+                </button>
               </div>
 
               <div className={styles.bio}>
@@ -250,7 +256,7 @@ export default function ProfilePage() {
                     <div className={styles.postOverlay}>
                       <div className={styles.postStats}>
                         <span className={styles.postLikes}>
-                          <Heart/> {post.likes}
+                          <Heart/> 0
                         </span>
                       </div>
                     </div>
@@ -307,7 +313,7 @@ export default function ProfilePage() {
                 <p>{selectedPost.caption}</p>
               </div>
               <div className={styles.modalStats}>
-                <span> <Heart/> {selectedPost.likes} likes</span>
+                <span> <Heart/> 0 likes</span>
                 <span onClick={() => setIsCommentModalOpen(true)}>💬</span>
               </div>
             </div>
