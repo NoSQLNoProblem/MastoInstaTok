@@ -138,9 +138,11 @@ export default function Post({ post, onLike }: PostProps) {
           >
             💬
           </button>
-          <span className={styles.likeCount}>
-            {likeCount} {likeCount === 1 ? "like" : "likes"}
-          </span>
+          {isInternalUser && (
+            <span className={styles.likeCount}>
+              {likeCount} {likeCount === 1 ? "like" : "likes"}
+            </span>
+          )}
         </div>
 
         <div className={styles.caption}>
