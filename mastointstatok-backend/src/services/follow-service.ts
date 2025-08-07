@@ -12,7 +12,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
     const ctx = createContext(request);
     let collectionPage;
     const handle = request.params.user;
-    if(await isLocalUser(request, handle )){
+    if(isLocalUser(request, handle )){
         let cursor : string;
         if(!next){
             cursor = getMaxObjectId().toHexString();
