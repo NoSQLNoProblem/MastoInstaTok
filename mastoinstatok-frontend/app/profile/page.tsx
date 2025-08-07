@@ -250,7 +250,7 @@ export default function ProfilePage() {
                     <div className={styles.postOverlay}>
                       <div className={styles.postStats}>
                         <span className={styles.postLikes}>
-                          ❤️ {post.likedBy.length || 0}
+                          ❤️ {post.likedBy?.length || 0}
                         </span>
                       </div>
                     </div>
@@ -307,7 +307,7 @@ export default function ProfilePage() {
                 <p>{selectedPost.caption}</p>
               </div>
               <div className={styles.modalStats}>
-                <span> ❤️ {selectedPost.likedBy.length || 0} likes</span>
+                <span> ❤️ {selectedPost.likedBy?.length || 0} likes</span>
                 <span onClick={() => setIsCommentModalOpen(true)}>💬</span>
               </div>
             </div>
