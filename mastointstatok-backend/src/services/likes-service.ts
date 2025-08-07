@@ -11,14 +11,14 @@ import {type Request} from 'express';
 const db = client.db("app_db")
 const postsCollection = db.collection<PostData>("posts")
 
-export async function ToggleLike(userId: string, postId: string, req : Request): Promise<ToggleLikeResponse> {
+export async function ToggleLike(userId: string, postId: string, req ?: Request): Promise<ToggleLikeResponse> {
   const post = await postsCollection.findOne({ id: postId })
   
   if (!post) {
     throw new Error("Post not found")
   }
 
-  if(!isLocalUser(req, post.userHandle)){
+  if(req && !isLocalUser(req, post.userHandle)){
     // notify the external user that someone has liked their post
     await NotifyAuthorLikes(post, req, await FindUser(req.user as Profile) as User)
   }

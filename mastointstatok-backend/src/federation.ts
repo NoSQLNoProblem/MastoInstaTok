@@ -8,8 +8,10 @@ import { getAcceptRecord, getAttachmentRecord, getCreateRecord, getFollowRecord,
 import { NotFoundError, ValidationError } from "./lib/errors.js";
 import { getLogger } from "@logtape/logtape";
 import { getHandleFromUri } from "./services/follow-service.js";
-import { Post } from "./database/post-queries.js";
+import { getPostById, Post } from "./database/post-queries.js";
 import { LookupUser } from "./services/user-service.js";
+import { NotFound } from "@aws-sdk/client-s3";
+import { ToggleLike } from "./services/likes-service.js";
 
 export const federation = createFederation({
   kv: new MemoryKvStore(),
@@ -245,6 +247,26 @@ federation
       getLogger().debug("Post data successfully created from remote post. Post: {post}", {post: JSON.stringify(post)});
       await Post(post);
     }
+  }).on(Like, async (ctx, like)=>{
+      getLogger().debug("== Received Like activity ==");
+    if (like.objectId == null) {
+      getLogger().debug("The Like object does not have an object: {like}", {
+        like,
+      });
+      return;
+    }
+    const post = await getPostById(like.objectId.href);
+    if(!post || !post.id){
+      getLogger().error("Post not found for like activity");
+      throw new NotFoundError();
+    }
+    const author = await like.getActor();
+    if(!author || !author.id){
+      getLogger().error("the like object does not have an actor");
+      throw new NotFoundError();
+    }    
+    getLogger().debug("We made it babyyyyy!!!");
+    ToggleLike(author.id.href, post.id);
   })
 
 federation.setObjectDispatcher(
@@ -488,7 +510,6 @@ export async function sendNoteToExternalFollowers(
     create
   );
 }
-
 
 export async function NotifyAuthorLikes(post : PostData, req: Request, user: User){
 
