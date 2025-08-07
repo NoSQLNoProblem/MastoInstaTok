@@ -6,13 +6,14 @@ import { isLocalUser, LookupUser } from "./user-service.js";
 import { getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "../database/follow-queries.js";
 import { getMaxObjectId } from "../lib/mongo.js";
 import { FindUserByUri } from "../database/user-queries.js";
+import { getLogger } from "@logtape/logtape";
 
 export async function GetOrderedCollectionPage(request: Request, actor: Actor, resourceId : string | null,  next?: string, isFollowing ?: boolean) {
     
     const ctx = createContext(request);
     let collectionPage;
     const handle = request.params.user;
-    if(await isLocalUser(request, handle )){
+    if(isLocalUser(request, handle )){
         let cursor : string;
         if(!next){
             cursor = getMaxObjectId().toHexString();
@@ -50,7 +51,10 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
 
     if (!next) {
         if (!resourceId) return []
-        collectionPage = await ((await ctx.lookupObject(resourceId)) as OrderedCollection).getFirst();
+        const resource = await ctx.lookupObject(resourceId);
+        console.log("The followers endpoint is returning ");
+        getLogger().debug(JSON.stringify(resource));
+        collectionPage = await ((resource) as OrderedCollection).getFirst();
         if (collectionPage == null) return [];
 
     } else {

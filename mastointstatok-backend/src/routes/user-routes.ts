@@ -323,8 +323,6 @@ UserRouter.get("/platform/users/me/feed", async (req, res, next) => {
         return b.timestamp - a.timestamp
     })
 
-    // Getting the new cursor is a fucked up problem that I don't want to think about
-    // for now the only solution I can come up with that guarantees posts are not lost is to take the maxmin of the grouped posts
     const newCursor = oldestPosts.length !== 0 ? oldestPosts.reduce((prev, curr) => curr > prev ? curr : prev) : -1
     const response = {
         posts: feed,

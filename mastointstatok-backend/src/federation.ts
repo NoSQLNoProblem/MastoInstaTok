@@ -33,6 +33,7 @@ federation.setActorDispatcher("/api/users/{identifier}", async (ctx, identifier)
     preferredUsername: user.username,
     name: user.displayName,
     inbox: ctx.getInboxUri(identifier),
+    outbox: ctx.getOutboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
     endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
     summary: user.bio,
@@ -188,8 +189,8 @@ federation
       }
 
       const attachmentUrl = attachment?.url
-      const content = (object.contents && object.contents.length > 0) ?  object.contents[0] : object.content ? object.content : null;
-
+      let content = (object.contents && object.contents.length > 0) ?  object.contents[0] : object.content ? object.content : null;
+      content = content?.toString().replace(/<[^>]+>/g, '') ?? "";
       if(!content){
         getLogger().error("No content provided");
         return;
