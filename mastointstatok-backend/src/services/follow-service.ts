@@ -40,7 +40,7 @@ export async function GetOrderedCollectionPage(request: Request, actor: Actor, r
                     actorId: user.id.href,
                     bio: user.summary,
                     displayName: user.name,
-                    fullHandle: `@${user.preferredUsername}@${(new URL(user!.id!.href).host)})` 
+                    fullHandle: `@${user.preferredUsername}@${(new URL(user!.id!.href).host)}` 
                 }
             }
             )),
