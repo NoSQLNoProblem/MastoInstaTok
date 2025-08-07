@@ -46,7 +46,7 @@ UserRouter.get('/platform/users/:userHandle', async (req, res, next) => {
             console.log('Sending cached response for user search',JSON.parse(cachedResponse));
             return res.json(JSON.parse(cachedResponse));
         }
-        await redisClient.setEx(cacheKey, 300, JSON.stringify(userResponse));
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(userResponse));
         res.json(userResponse);
         next();
 
@@ -110,7 +110,7 @@ UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
         if (!user || !user.followersId) throw new NotFoundError();
 
         const followers = await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []
-        await redisClient.setEx(cacheKey, 300, JSON.stringify(followers));
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(followers));
         res.json(followers);
         next();
     } catch (e) {
@@ -137,7 +137,7 @@ UserRouter.get('/platform/users/:user/following', async (req, res, next) => {
 
         const following = await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined, true) ?? []
 
-        await redisClient.setEx(cacheKey, 300, JSON.stringify(following));
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(following));
 
         res.json(following);
     } catch (e) {
