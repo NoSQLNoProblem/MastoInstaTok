@@ -1,14 +1,15 @@
-import { createFederation, exportJwk, generateCryptoKeyPair, importJwk, Follow, Person, Image, Accept, Create, Endpoints, Document, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video, MemoryKvStore } from "@fedify/fedify";
+import { createFederation, exportJwk, generateCryptoKeyPair, importJwk, Follow, Person, Image, Accept, Create, Endpoints, Document, InProcessMessageQueue, Note, PUBLIC_COLLECTION, Undo, type Context, type Recipient, Video, MemoryKvStore, Like } from "@fedify/fedify";
 import { MongoKvStore } from "./lib/mongo-key-store.js";
-import type { AcceptObject, Attachment, CreateObject, FileType, Follower, FollowObject, NoteObject, PostData, UndoObject } from "./types.js";
+import type { AcceptObject, Attachment, CreateObject, FileType, Follower, FollowObject, NoteObject, PostData, UndoObject, User } from "./types.js";
 import { type Request } from "express";
 import { FindUserByUri } from "./database/user-queries.js";
 import { AddFollower, AddFollowing, getInternalUsersFollowersByUserId, getInternalUsersFollowingByUserId } from "./database/follow-queries.js";
 import { getAcceptRecord, getAttachmentRecord, getCreateRecord, getFollowRecord, getNoteRecord, getUndoRecord, insertAcceptRecord, insertAttachmentRecord, insertCreateRecord, insertFollowRecord, insertNoteRecord, insertUndoRecord } from "./database/object-queries.js";
-import { ValidationError } from "./lib/errors.js";
+import { NotFoundError, ValidationError } from "./lib/errors.js";
 import { getLogger } from "@logtape/logtape";
 import { getHandleFromUri } from "./services/follow-service.js";
 import { Post } from "./database/post-queries.js";
+import { LookupUser } from "./services/user-service.js";
 
 export const federation = createFederation({
   kv: new MemoryKvStore(),
@@ -486,6 +487,32 @@ export async function sendNoteToExternalFollowers(
     recipients,
     create
   );
+}
+
+
+export async function NotifyAuthorLikes(post : PostData, req: Request, user: User){
+
+  const recipient = await LookupUser(post.userHandle, req);
+  const ctx = createContext(req)
+  if(!recipient){
+    getLogger().error("No recipient found")
+    throw new NotFoundError();
+  }
+  if(!post.id) {
+    getLogger().error("No post id found");
+    throw new NotFoundError();
+  }
+
+  if(!user.username){
+    getLogger().error("No username on user object");
+    throw new ValidationError();
+  }
+  const like = new Like({
+    actor: ctx.getActorUri(user.actorId),
+    object: new URL(post.id),
+    to: recipient
+  })
+  ctx.sendActivity({identifier: user.username}, recipient, like);
 }
 
 export default federation;

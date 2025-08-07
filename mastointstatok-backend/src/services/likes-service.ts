@@ -1,16 +1,26 @@
+import type { Profile } from "passport";
+import { FindUser } from "../database/user-queries.js";
+import { NotifyAuthorLikes } from "../federation.js";
 import client from "../lib/mongo.js"
-import type { PostData } from "../types.js"
+import type { PostData, User } from "../types.js"
 import type { LikeDocument, PostLikesResponse, ToggleLikeResponse } from "../types/PostTypes.js"
+import { isLocalUser } from "./user-service.js"
+
+import {type Request} from 'express';
 
 const db = client.db("app_db")
 const postsCollection = db.collection<PostData>("posts")
 
-export async function ToggleLike(userId: string, postId: string): Promise<ToggleLikeResponse> {
+export async function ToggleLike(userId: string, postId: string, req : Request): Promise<ToggleLikeResponse> {
   const post = await postsCollection.findOne({ id: postId })
-
-
+  
   if (!post) {
     throw new Error("Post not found")
+  }
+
+  if(!isLocalUser(req, post.userHandle)){
+    // notify the external user that someone has liked their post
+    await NotifyAuthorLikes(post, req, await FindUser(req.user as Profile) as User)
   }
 
   let action: "liked" | "unliked"

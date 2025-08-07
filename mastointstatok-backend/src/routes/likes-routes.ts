@@ -24,7 +24,7 @@ LikesRouter.post("/likes/toggle", async (req, res) => {
       return res.status(400).json({ error: "postId is required" })
     }
 
-    const result = await ToggleLike(user.fullHandle, postId)
+    const result = await ToggleLike(user.fullHandle, postId, req)
     res.json({
       message: `Post ${result.action} successfully`,
       ...result,
