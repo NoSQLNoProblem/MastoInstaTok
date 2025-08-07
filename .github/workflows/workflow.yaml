@@ -255,45 +255,6 @@ jobs:
             
             pm2 start npm --name mastoinstatok-api -- run prod
           '
-  restart-pm2:
-    name: Restart PM2
-    permissions:
-      id-token: write
-      contents: read
-    needs: 
-      - deploy-api
-      - terraform
-      - issue-certificates
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: arn:aws:iam::804180393465:role/github-role
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Get secrets from AWS Key Store
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            EC2_PRIVATE_KEY, privatekey
-
-      - name: Setup private key
-        run: |
-          echo "${{ env.EC2_PRIVATE_KEY }}" > privatekey.pem
-          chmod 0500 privatekey.pem
-      
-      - name: Restart
-        run: |
-          EC2_HOST=${{ needs.terraform.outputs.ec2host }}
-          
-          ssh -o StrictHostKeyChecking=no -i privatekey.pem "ubuntu@$EC2_HOST" ' 
-            cd api-build/mastointstatok-backend/ &&
-
-            pm2 delete mastoinstatok-api &&
-            
-            pm2 start npm --name mastoinstatok-api -- run prod
-          '
 
   setup-databases:
       name: Setup MongoDB and Redis
