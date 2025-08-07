@@ -68,7 +68,7 @@ export default function FollowingPage() {
     if (!authLoading && isAuthenticated && user) {
       fetchFollowing();
     }
-  }, [authLoading, isAuthenticated, user]);
+  }, [authLoading, isAuthenticated, user, router]);
 
   useEffect(() => {
     const handleScroll = () => {

@@ -74,7 +74,7 @@ export default function FollowersPage() {
     if(!authLoading && isAuthenticated && user) {
       fetchFollowers();
     }
-  }, [authLoading, isAuthenticated, user]);
+  }, [authLoading, isAuthenticated, user, router]);
 
   useEffect(() => {
     const handleScroll = () => {

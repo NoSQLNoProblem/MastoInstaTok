@@ -107,7 +107,18 @@ UserRouter.get('/platform/users/:user/followers', async (req, res, next) => {
         if (!user || !user.followersId) throw new NotFoundError();
 
         const followers = await GetOrderedCollectionPage(req, user, user.followersId.href, req.query.next as string | undefined) ?? []
-        await redisClient.setEx(cacheKey, 20, JSON.stringify(followers));
+
+        let newItems : any[] = [];
+        if ('items' in followers) {
+            for (let i=0; i<=followers.items.length; i++){
+                if (followers.items[i]){
+                    newItems.push({...followers.items[i], avatarURL: (await FindUserByUserHandle(followers!.items[i]!.fullHandle, req))?.avatarURL});
+                }
+            }
+        }
+        const response = {...followers, items: newItems};
+
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(response));
         res.json(followers);
         next();
     } catch (e) {
@@ -123,7 +134,6 @@ UserRouter.get('/platform/users/:user/following', async (req, res, next) => {
 
         const cacheKey = `following:${req.params.user}`
         const cachedResponse = await redisClient.get(cacheKey);
-
         if (cachedResponse) {
             getLogger().debug('Sending cached response for get following',JSON.parse(cachedResponse));
             return res.json(JSON.parse(cachedResponse));
@@ -134,9 +144,19 @@ UserRouter.get('/platform/users/:user/following', async (req, res, next) => {
 
         const following = await GetOrderedCollectionPage(req, user, user.followingId.href, req.query.next as string | undefined, true) ?? []
 
-        await redisClient.setEx(cacheKey, 20, JSON.stringify(following));
+        let newItems : any[] = [];
+        if ('items' in following) {
+            for (let i=0; i<=following.items.length; i++){
+                if (following.items[i]){
+                    newItems.push({...following.items[i], avatarURL: (await FindUserByUserHandle(following!.items[i]!.fullHandle, req))?.avatarURL});
+                }
+            }
+        }
+        const response = {...following, items: newItems};
 
-        res.json(following);
+        await redisClient.setEx(cacheKey, 20, JSON.stringify(response));
+
+        res.json(response);
     } catch (e) {
         next(e)
     }
